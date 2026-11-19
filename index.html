@@ -45,8 +45,7 @@
     }
   </script>
 
-  <!-- Three.js & Confetti CDN -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <!-- Confetti CDN (Three.js loaded via ES module bundle) -->
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
 
   <style>
@@ -134,6 +133,30 @@
 
   <!-- ==================== UI OVERLAY CONTAINER ==================== -->
   <div id="ui-layer" class="absolute inset-0 z-10 pointer-events-none flex flex-col justify-between">
+
+    <!-- THREE.JS ASSET LOADING MANAGER PROGRESS OVERLAY -->
+    <div id="loading-overlay" class="pointer-events-auto fixed inset-0 z-[80] flex flex-col items-center justify-center p-6 bg-slate-950 transition-opacity duration-500">
+      <div class="w-full max-w-md bg-slate-900/95 border border-amber-500/40 rounded-3xl p-6 sm:p-8 shadow-2xl text-center space-y-4">
+        <div class="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-tr from-amber-500 via-yellow-400 to-sky-400 flex items-center justify-center text-slate-950 text-3xl shadow-xl">
+          <i class="fa-solid fa-plane-up"></i>
+        </div>
+        <div>
+          <span class="text-[10px] font-extrabold uppercase tracking-widest text-amber-400">SDN Kedungringin I Beji • 3D WebGL</span>
+          <h2 class="text-xl sm:text-2xl font-black text-white mt-1">PETUALANGAN CAHAYA ILMU</h2>
+          <p id="loading-status-text" class="text-xs text-slate-300 mt-1">Menyiapkan kanvas WebGL &amp; aset 3D...</p>
+        </div>
+
+        <div class="space-y-1.5 pt-1">
+          <div class="w-full h-3.5 bg-slate-950 rounded-full overflow-hidden border border-slate-700 p-0.5">
+            <div id="loading-progress-bar" class="h-full rounded-full bg-gradient-to-r from-amber-500 via-yellow-400 to-emerald-400 transition-all duration-200" style="width: 0%"></div>
+          </div>
+          <div class="flex items-center justify-between text-[11px] font-bold">
+            <span class="text-slate-400">Memuat Dunia &amp; Shader 3D</span>
+            <span id="loading-percentage" class="text-amber-300 font-mono">0%</span>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- TOP HUD (In-Game) -->
     <header id="in-game-hud" class="hidden pointer-events-auto p-2.5 sm:p-4 flex items-start justify-between gap-2 sm:gap-3 w-full max-w-7xl mx-auto">
@@ -379,7 +402,7 @@
   </div>
 
   <!-- ==================== MODAL: DUAL LOGIN (AKUN MURID & AKUN GURU) ==================== -->
-  <div id="modal-start" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md overflow-y-auto">
+  <div id="modal-start" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/90 overflow-y-auto">
     <div class="relative w-full max-w-xl bg-gradient-to-b from-slate-900 via-slate-900/95 to-slate-950 border border-amber-500/40 rounded-3xl p-6 sm:p-8 shadow-2xl box-glow-gold my-auto">
 
       <!-- School Crest / Header -->
@@ -635,136 +658,129 @@
     </div>
   </div>
 
-  <!-- ==================== RINTANGAN PEMAHAMAN: 3D AIRPLANE CHALLENGE (SPLIT SCREEN) ==================== -->
+  <!-- ==================== RINTANGAN PEMAHAMAN: 80% CENTER 3D AIRPLANE + 20% BOTTOM QUESTION PANEL ==================== -->
   <div id="modal-battle" class="hidden fixed inset-0 z-40 pointer-events-none flex flex-col justify-between">
 
-    <!-- Top HUD: Stage Info, Difficulty, Flight Approach Timer, Hearts & Lifelines -->
-    <header class="pointer-events-auto w-full p-2 sm:p-3.5 flex flex-col items-center">
-      <div class="w-full max-w-5xl bg-slate-950/88 border border-sky-400/50 rounded-2xl sm:rounded-3xl p-2.5 sm:p-3.5 backdrop-blur-md shadow-2xl flex flex-col gap-2">
+    <!-- UPPER 80%: UNOBSTRUCTED 3D FLYING AIRPLANE & 4 3D ANSWER BOXES -->
+    <div class="relative flex-1 h-[80vh] pointer-events-none flex flex-col justify-between">
 
-        <div class="flex items-center justify-between gap-2 flex-wrap">
-          <!-- Left: Flight Mission Identity -->
-          <div class="flex items-center gap-2.5">
-            <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-sky-500 via-blue-500 to-amber-400 flex items-center justify-center text-slate-950 text-base sm:text-lg shadow-lg flex-shrink-0">
+      <!-- Compact Top Flight Telemetry Strip -->
+      <header class="pointer-events-auto w-full px-2.5 pt-2 flex justify-center">
+        <div class="w-full max-w-6xl bg-slate-950/90 border border-sky-400/40 rounded-2xl px-3 py-1.5 shadow-xl flex flex-wrap items-center justify-between gap-2">
+          <!-- Left: Mission Badge & Difficulty -->
+          <div class="flex items-center gap-2 min-w-0">
+            <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-sky-400 to-amber-400 flex items-center justify-center text-slate-950 text-xs font-bold flex-shrink-0">
               <i class="fa-solid fa-plane-up"></i>
             </div>
-            <div>
-              <div class="flex items-center gap-2 flex-wrap">
-                <span id="battle-stage-badge" class="text-[10px] font-extrabold uppercase tracking-wider text-sky-300">Stage 1 • Al-Qur'an &amp; Hadis</span>
-                <span id="battle-difficulty-badge" class="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-400/40">AKM Sedang</span>
-              </div>
-              <h3 id="battle-boss-name" class="text-xs sm:text-sm font-extrabold text-white leading-tight">Rintangan Pemahaman • Pesawat 3D</h3>
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <span id="battle-stage-badge" class="text-[11px] font-extrabold text-sky-300">Dunia 1 • Al-Qur'an &amp; Hadis</span>
+              <span id="battle-difficulty-badge" class="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-400/40">AKM Sedang</span>
+              <span id="battle-boss-name" class="hidden lg:inline text-[11px] text-slate-300 font-semibold">• Arahkan pesawat ke kotak jawaban 3D</span>
             </div>
           </div>
 
+          <!-- Center: Slim Flight Timer Bar -->
+          <div class="flex items-center gap-2 flex-1 min-w-[160px] max-w-xs">
+            <div class="flex-1 h-2 bg-slate-900 rounded-full overflow-hidden border border-slate-700">
+              <div id="flight-timer-bar" class="h-full bg-gradient-to-r from-emerald-400 via-sky-400 to-amber-400 transition-all duration-100" style="width: 100%"></div>
+            </div>
+            <span id="flight-timer-text" class="text-[11px] text-amber-300 font-mono font-bold w-14 text-right">25.0 dtk</span>
+          </div>
+
           <!-- Right: Lifelines, Hearts, Combo, Exit -->
-          <div class="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-            <button id="skill-5050" class="px-2.5 py-1 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-amber-500/40 text-amber-300 text-[11px] font-bold flex items-center gap-1 transition-all disabled:opacity-40 disabled:cursor-not-allowed" title="Firasat Tajwid: Hapus 2 kotak salah">
+          <div class="flex items-center gap-1.5">
+            <button id="skill-5050" class="px-2 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-amber-500/40 text-amber-300 text-[10px] font-bold flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed" title="50:50 Hapus 2 kotak 3D salah">
               <i class="fa-solid fa-scissors"></i> <span>50:50</span>
             </button>
-            <button id="skill-shield" class="px-2.5 py-1 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-emerald-500/40 text-emerald-300 text-[11px] font-bold flex items-center gap-1 transition-all disabled:opacity-40 disabled:cursor-not-allowed" title="Perisai Sabar: Lindungi 1 kesalahan">
-              <i class="fa-solid fa-shield"></i> <span>Perisai</span>
+            <button id="skill-shield" class="px-2 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-emerald-500/40 text-emerald-300 text-[10px] font-bold flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed" title="Perisai Sabar">
+              <i class="fa-solid fa-shield"></i>
             </button>
-            <button id="skill-hint" class="px-2.5 py-1 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-sky-500/40 text-sky-300 text-[11px] font-bold flex items-center gap-1 transition-all" title="Petunjuk Nura">
+            <button id="skill-hint" class="px-2 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-sky-500/40 text-sky-300 text-[10px] font-bold flex items-center gap-1" title="Petunjuk Nura">
               <i class="fa-solid fa-wand-magic-sparkles"></i> <span>Hint</span>
             </button>
 
-            <div class="flex items-center gap-2 pl-2 border-l border-slate-800">
-              <div id="battle-hearts-container" class="flex items-center gap-0.5 text-red-500 text-sm">
+            <div class="flex items-center gap-1.5 pl-1.5 border-l border-slate-800">
+              <div id="battle-hearts-container" class="flex items-center gap-0.5 text-red-500 text-xs">
                 <i class="fa-solid fa-heart"></i><i class="fa-solid fa-heart"></i><i class="fa-solid fa-heart"></i>
               </div>
-              <span id="battle-combo-badge" class="text-[10px] font-bold text-amber-300 bg-amber-400/10 px-2 py-0.5 rounded-lg border border-amber-400/30">0x</span>
+              <span id="battle-combo-badge" class="text-[10px] font-bold text-amber-300 bg-amber-400/10 px-1.5 py-0.5 rounded border border-amber-400/30">0x</span>
             </div>
 
-            <button id="btn-exit-flight" class="px-2.5 py-1 rounded-xl bg-slate-800 hover:bg-red-600/80 text-slate-300 hover:text-white text-[11px] font-bold transition-colors" title="Keluar dari Rintangan">
+            <button id="btn-exit-flight" class="px-2 py-1 rounded-lg bg-slate-800 hover:bg-red-600/80 text-slate-300 hover:text-white text-[10px] font-bold transition-colors" title="Keluar">
               <i class="fa-solid fa-xmark"></i>
             </button>
           </div>
         </div>
+      </header>
 
-        <!-- Flight Approach Progress Bar & Boost Trigger -->
-        <div class="flex items-center gap-2.5">
-          <div class="flex-1">
-            <div class="flex justify-between text-[10px] font-bold text-slate-300 mb-0.5">
-              <span><i class="fa-solid fa-gauge-high text-sky-400 mr-1"></i> Pesawat mendekati kotak jawaban otomatis (Panah / Mouse / Sentuh)</span>
-              <span id="flight-timer-text" class="text-amber-300 font-mono">25.0 dtk</span>
-            </div>
-            <div class="w-full h-2.5 bg-slate-900 rounded-full overflow-hidden border border-slate-700/80">
-              <div id="flight-timer-bar" class="h-full bg-gradient-to-r from-emerald-400 via-sky-400 to-amber-400 transition-all duration-100" style="width: 100%"></div>
-            </div>
+      <!-- Center Open Sky Viewport: Subtle Edge Steer Controls & Active 3D Box Indicator -->
+      <div class="flex-1 pointer-events-none flex items-end justify-between px-3 pb-2.5">
+        <button id="btn-steer-left" class="pointer-events-auto w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-slate-950/75 hover:bg-slate-900 border border-sky-400/60 text-sky-300 text-base flex items-center justify-center active:scale-90 transition-transform shadow-lg" title="Belok Kiri (Panah Kiri / A)">
+          <i class="fa-solid fa-chevron-left"></i>
+        </button>
+
+        <div class="pointer-events-auto flex items-center gap-2">
+          <div id="flight-lane-indicator" class="px-3.5 py-1 rounded-full bg-slate-950/85 border border-amber-400/70 text-amber-300 text-[11px] sm:text-xs font-extrabold shadow-lg">
+            Pesawat Membidik: Kotak B
           </div>
-          <button id="btn-flight-boost" class="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-extrabold text-[11px] uppercase tracking-wide hover:scale-105 active:scale-95 transition-transform shadow-md flex-shrink-0">
-            <i class="fa-solid fa-jet-fighter-up mr-1"></i> Pilih Jalur Ini
+          <button id="btn-flight-boost" class="px-3 py-1 rounded-full bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-extrabold text-[11px] uppercase tracking-wide hover:scale-105 active:scale-95 transition-transform shadow-md">
+            <i class="fa-solid fa-jet-fighter-up mr-1"></i> Tembus Jawaban
           </button>
         </div>
 
+        <button id="btn-steer-right" class="pointer-events-auto w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-slate-950/75 hover:bg-slate-900 border border-sky-400/60 text-sky-300 text-base flex items-center justify-center active:scale-90 transition-transform shadow-lg" title="Belok Kanan (Panah Kanan / D)">
+          <i class="fa-solid fa-chevron-right"></i>
+        </button>
       </div>
-    </header>
-
-    <!-- Center Space: UNOBSTRUCTED 3D FLYING AIRPLANE & 4 APPROACHING ANSWER BOXES + Subtle Edge Touch Pads -->
-    <div class="flex-1 pointer-events-none relative flex items-end justify-between px-3 pb-2">
-      <button id="btn-steer-left" class="pointer-events-auto w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-slate-950/65 hover:bg-slate-900/90 border border-sky-400/60 text-sky-300 text-lg flex items-center justify-center backdrop-blur-sm active:scale-90 transition-transform shadow-lg" title="Belok Kiri (Panah Kiri)">
-        <i class="fa-solid fa-chevron-left"></i>
-      </button>
-      <div id="flight-lane-indicator" class="px-3.5 py-1 rounded-full bg-slate-950/80 border border-amber-400/60 text-amber-300 text-xs font-extrabold backdrop-blur-md shadow-lg">
-        Jalur Aktif Pesawat: B
-      </div>
-      <button id="btn-steer-right" class="pointer-events-auto w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-slate-950/65 hover:bg-slate-900/90 border border-sky-400/60 text-sky-300 text-lg flex items-center justify-center backdrop-blur-sm active:scale-90 transition-transform shadow-lg" title="Belok Kanan (Panah Kanan)">
-        <i class="fa-solid fa-chevron-right"></i>
-      </button>
     </div>
 
-    <!-- Bottom Dock: AKM Stimulus, Question, 4 Lane-Synced Option Cards, and Feedback -->
-    <div class="pointer-events-auto w-full max-w-5xl mx-auto p-2 sm:p-3.5 flex flex-col items-center">
-      <div class="w-full bg-slate-950/95 border-2 border-amber-400/80 rounded-3xl p-3 sm:p-4 shadow-2xl backdrop-blur-xl flex flex-col gap-2 max-h-[44vh] overflow-y-auto">
+    <!-- BOTTOM 20%: SEPARATED COMPACT QUESTION-ONLY PANEL (PILIHAN JAWABAN HANYA DI KOTAK 3D PESAWAT) -->
+    <section id="flight-question-panel" class="pointer-events-auto w-full h-[20vh] min-h-[124px] max-h-[22vh] bg-slate-950/96 border-t-2 border-amber-400/80 shadow-[0_-8px_30px_rgba(0,0,0,0.65)] px-3 sm:px-5 py-2 flex flex-col justify-between overflow-hidden">
+      <div class="w-full max-w-5xl mx-auto flex flex-col gap-1 h-full justify-between">
 
-        <div class="flex items-center justify-between text-[10px] sm:text-xs flex-wrap gap-1">
-          <span id="quiz-question-number" class="font-extrabold uppercase tracking-widest text-amber-400 flex items-center gap-1.5">
-            <i class="fa-solid fa-plane"></i> Soal 1 dari 10 • Asesmen Kompetensi Minimum (AKM)
+        <!-- Compact Header Row -->
+        <div class="flex items-center justify-between gap-2 text-[10px] sm:text-[11px] flex-shrink-0">
+          <span id="quiz-question-number" class="font-extrabold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+            <i class="fa-solid fa-plane"></i> Soal 1 dari 10 • AKM
           </span>
-          <span id="flight-score-live" class="text-emerald-300 font-bold text-[11px]">Benar: 0 / 0</span>
+          <span class="hidden sm:inline text-slate-400 text-[10px]">
+            Arahkan pesawat (Panah / Mouse / Sentuh / Klik Kotak 3D) ke pilihan jawaban di langit
+          </span>
+          <span id="flight-score-live" class="text-emerald-300 font-bold">Benar: 0 / 0</span>
         </div>
 
-        <!-- AKM Stimulus Box -->
-        <div id="quiz-stimulus-card" class="hidden p-2 rounded-xl bg-amber-950/40 border border-amber-500/30 text-amber-100 text-xs leading-relaxed max-h-20 overflow-y-auto">
-          <div class="flex items-center gap-1.5 mb-0.5 font-bold text-amber-300 text-[10px] uppercase tracking-wider">
-            <i class="fa-solid fa-book-open"></i>
-            <span>Stimulus Literasi AKM</span>
+        <!-- Compact Scrollable Stimulus + Small Question Prompt (No Option Cards Here) -->
+        <div class="flex-1 overflow-y-auto pr-1 space-y-1">
+          <div id="quiz-stimulus-card" class="hidden px-2.5 py-1 rounded-lg bg-amber-950/35 border border-amber-500/25 text-[11px] text-slate-300 leading-snug">
+            <span class="font-bold text-amber-300 uppercase text-[9px] tracking-wider mr-1.5">Stimulus:</span>
+            <span id="quiz-stimulus-text"></span>
           </div>
-          <p id="quiz-stimulus-text" class="text-slate-200"></p>
+
+          <p id="quiz-question-text" class="text-xs sm:text-sm font-bold text-white leading-snug">
+            Pertanyaan AKM akan dimuat di sini...
+          </p>
+
+          <div id="quiz-hint-box" class="hidden px-2.5 py-1 rounded-lg bg-sky-950/60 border border-sky-400/40 text-[11px] text-sky-200 flex items-center gap-1.5">
+            <i class="fa-solid fa-lightbulb text-amber-400 flex-shrink-0"></i>
+            <span id="quiz-hint-text">Bisikan petunjuk dari Nura...</span>
+          </div>
         </div>
 
-        <!-- Question Prompt -->
-        <p id="quiz-question-text" class="text-xs sm:text-sm md:text-base font-bold text-white leading-snug">
-          Pertanyaan AKM akan dimuat di sini...
-        </p>
-
-        <!-- Dynamic Hint Callout -->
-        <div id="quiz-hint-box" class="hidden p-2 rounded-xl bg-sky-950/60 border border-sky-400/50 text-xs text-sky-200 flex items-start gap-2">
-          <i class="fa-solid fa-lightbulb text-amber-400 mt-0.5"></i>
-          <span id="quiz-hint-text">Bisikan petunjuk dari Nura...</span>
-        </div>
-
-        <!-- Answer Options (4 Cards synced to Airplane Lanes A, B, C, D) -->
-        <div id="quiz-options-container" class="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2">
-          <!-- Dynamically generated -->
-        </div>
-
-        <!-- Feedback / Result Banner -->
-        <div id="quiz-feedback-banner" class="hidden p-2.5 sm:p-3 rounded-2xl text-xs font-semibold flex items-center justify-between gap-3">
-          <div class="flex items-center gap-2">
-            <div id="quiz-feedback-icon" class="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-300 flex items-center justify-center flex-shrink-0 text-xs">
+        <!-- Feedback / Next Question Bar (Appears right inside bottom panel after airplane hits answer box) -->
+        <div id="quiz-feedback-banner" class="hidden px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold flex items-center justify-between gap-2 flex-shrink-0">
+          <div class="flex items-center gap-2 min-w-0">
+            <div id="quiz-feedback-icon" class="w-5 h-5 rounded-md bg-emerald-500/20 text-emerald-300 flex items-center justify-center flex-shrink-0 text-[10px]">
               <i class="fa-solid fa-check"></i>
             </div>
-            <span id="quiz-feedback-text">Tepat sasaran!</span>
+            <span id="quiz-feedback-text" class="truncate sm:whitespace-normal">Tepat sasaran!</span>
           </div>
-          <button id="btn-next-question" class="px-4 py-1.5 rounded-xl bg-white text-slate-950 font-extrabold text-xs uppercase tracking-wide hover:bg-slate-200 transition-colors flex-shrink-0 shadow-md">
-            Soal Berikutnya <i class="fa-solid fa-arrow-right ml-1"></i>
+          <button id="btn-next-question" class="px-3.5 py-1 rounded-lg bg-white text-slate-950 font-extrabold text-[11px] uppercase tracking-wide hover:bg-slate-200 transition-colors flex-shrink-0 shadow">
+            Lanjut <i class="fa-solid fa-arrow-right ml-1"></i>
           </button>
         </div>
 
       </div>
-    </div>
+    </section>
 
   </div>
 

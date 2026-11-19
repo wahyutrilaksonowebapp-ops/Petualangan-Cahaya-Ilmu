@@ -1,5 +1,23 @@
 import * as THREE from 'three';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import type { LiveRemotePlayer } from './multiplayerClient.ts';
+
+const _tmpScaleVec = new THREE.Vector3();
+
+function detectSoftwareWebGL(): boolean {
+  try {
+    const probe = document.createElement('canvas');
+    const gl = probe.getContext('webgl2') || probe.getContext('webgl');
+    if (!gl) return true;
+    const ext = gl.getExtension('WEBGL_debug_renderer_info');
+    const param = ext ? ext.UNMASKED_RENDERER_WEBGL : gl.RENDERER;
+    const gpu = String(gl.getParameter(param) || '');
+    gl.getExtension('WEBGL_lose_context')?.loseContext();
+    return /SwiftShader|llvmpipe|softpipe|Software|Basic Render/i.test(gpu);
+  } catch {
+    return true;
+  }
+}
 
 export interface PortalData {
   stageId: number;
@@ -100,7 +118,11 @@ function createGlowParticleTexture(): THREE.CanvasTexture {
 export class World3D {
   public scene: THREE.Scene;
   public camera: THREE.PerspectiveCamera;
-  public renderer: THREE.WebGLRenderer;
+  public renderer!: THREE.WebGLRenderer;
+  public canvas: HTMLCanvasElement;
+  public isInitialized: boolean = false;
+  public isSoftwareGl: boolean = false;
+  private maxAnisotropy: number = 1;
 
   // Characters & Companion
   public playerGroup: THREE.Group;
@@ -130,10 +152,14 @@ export class World3D {
   public answerBoxes: FlightAnswerBox[] = [];
   private flightClouds: THREE.Group[] = [];
   private flightStars: THREE.Points | null = null;
-  private flightLanePositions: number[] = [-4.6, -1.55, 1.55, 4.6];
-  private airplaneTargetX: number = -1.55;
-  private airplaneCurrentX: number = -1.55;
+  private flightExhaust: THREE.Mesh | null = null;
+  private flightContrails: THREE.Mesh[] = [];
+  private flightLanePositions: number[] = [-5.25, -1.75, 1.75, 5.25];
+  private airplaneTargetX: number = -1.75;
+  private airplaneCurrentX: number = -1.75;
   private airplaneBankAngle: number = 0;
+  private airplaneYawAngle: number = 0;
+  private airplanePitchAngle: number = 0;
   public flightElapsed: number = 0;
   public flightDuration: number = 25;
   public flightPaused: boolean = true;
@@ -186,30 +212,18 @@ export class World3D {
   private sunLight!: THREE.DirectionalLight;
 
   constructor(canvas: HTMLCanvasElement) {
+    this.canvas = canvas;
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x070d1d);
     this.scene.fog = new THREE.FogExp2(0x070d1d, 0.025);
 
-    this.camera = new THREE.PerspectiveCamera(
-      52,
-      window.innerWidth / window.innerHeight,
-      0.1,
-      190
-    );
+    const w = Math.max(1, window.innerWidth);
+    const h = Math.max(1, window.innerHeight);
+    this.camera = new THREE.PerspectiveCamera(52, w / h, 0.1, 210);
     this.camera.position.set(0, 7.6, 13.5);
-
-    this.renderer = new THREE.WebGLRenderer({
-      canvas,
-      antialias: true,
-      powerPreference: 'high-performance',
-    });
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.scene.add(this.campusGroup);
 
-    // Build sub-components
+    // Lightweight placeholders before initialize(manager) attaches WebGL & builds assets
     this.playerGroup = new THREE.Group();
     this.playerBody = new THREE.Mesh();
     this.playerLegLeft = new THREE.Mesh();
@@ -224,7 +238,6 @@ export class World3D {
     this.nuraRing = new THREE.Mesh();
     this.nuraLight = new THREE.PointLight(0xfacc15, 2.5, 6);
 
-    // Initialize 3D Airplane Challenge placeholders
     this.flightGroup = new THREE.Group();
     this.airplaneGroup = new THREE.Group();
     this.airplanePropeller = new THREE.Group();
@@ -234,18 +247,139 @@ export class World3D {
     this.sharedFaceTexture = this.createFaceTexture();
     this.raycaster = new THREE.Raycaster();
     this.pointer = new THREE.Vector2();
+  }
 
+  /**
+   * Attaches WebGLRenderer to #game-canvas and loads all procedural 3D textures,
+   * studio PBR environment, campus, 5 worlds, 3D airplane arena, and shaders
+   * tracked cleanly through THREE.LoadingManager.
+   */
+  public async initialize(
+    manager: THREE.LoadingManager,
+    onStageLabel?: (label: string) => void
+  ): Promise<void> {
+    if (this.isInitialized) return;
+    if (!this.canvas || !document.body.contains(this.canvas)) {
+      throw new Error('Elemen #game-canvas belum terpasang di DOM.');
+    }
+
+    const stepKeys = [
+      { id: 'asset://webgl-renderer', label: 'Menghubungkan WebGL Renderer & Studio PBR...' },
+      { id: 'asset://textures-core', label: 'Memuat tekstur partikel & karakter...' },
+      { id: 'asset://lighting-campus', label: 'Membangun kampus SDN Kedungringin I Beji...' },
+      { id: 'asset://portals-5-worlds', label: 'Membangun 5 gerbang & bioma 3D...' },
+      { id: 'asset://player-nura', label: 'Menyiapkan avatar santri & Nura...' },
+      { id: 'asset://airplane-arena', label: 'Merakit Pesawat 3D & Rintangan Pemahaman...' },
+      { id: 'asset://shader-compile', label: 'Mengompilasi shader WebGL...' },
+    ];
+
+    // Pre-register all asset items so LoadingManager tracks exact 0% -> 100% progress
+    stepKeys.forEach((s) => manager.itemStart(s.id));
+
+    const nextTick = () => new Promise<void>((resolve) => window.setTimeout(resolve, 24));
+
+    // Step 1: WebGLRenderer + Software WebGL Guard + RoomEnvironment PBR reflections
+    onStageLabel?.(stepKeys[0].label);
+    await nextTick();
+    this.isSoftwareGl = detectSoftwareWebGL();
+    this.renderer = new THREE.WebGLRenderer({
+      canvas: this.canvas,
+      antialias: !this.isSoftwareGl,
+      powerPreference: 'high-performance',
+    });
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.1;
+    this.renderer.setSize(window.innerWidth, window.innerHeight);
+    this.renderer.setPixelRatio(this.isSoftwareGl ? 1 : Math.min(window.devicePixelRatio, 2));
+    this.renderer.shadowMap.enabled = !this.isSoftwareGl;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.maxAnisotropy = Math.min(8, this.renderer.capabilities.getMaxAnisotropy() || 1);
+
+    try {
+      const pmrem = new THREE.PMREMGenerator(this.renderer);
+      this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+      pmrem.dispose();
+    } catch {
+      // fallback safely if PMREM unsupported
+    }
+
+    this.canvas.addEventListener('webglcontextlost', (e) => {
+      e.preventDefault();
+    });
+    manager.itemEnd(stepKeys[0].id);
+
+    // Step 2: Core Procedural Textures via TextureLoader(manager)
+    onStageLabel?.(stepKeys[1].label);
+    await nextTick();
+    this.glowTexture.colorSpace = THREE.SRGBColorSpace;
+    this.sharedFaceTexture.colorSpace = THREE.SRGBColorSpace;
+    this.sharedFaceTexture.anisotropy = this.maxAnisotropy;
+    manager.itemEnd(stepKeys[1].id);
+
+    // Step 3: Lighting & Campus
+    onStageLabel?.(stepKeys[2].label);
+    await nextTick();
     this.setupLighting();
     this.buildSchoolCampus();
+    manager.itemEnd(stepKeys[2].id);
+
+    // Step 4: Portals & 5 Biome Maps
+    onStageLabel?.(stepKeys[3].label);
+    await nextTick();
     this.buildPortals();
     this.build5BiomeMaps();
+    manager.itemEnd(stepKeys[3].id);
+
+    // Step 5: Player & Nura Companion
+    onStageLabel?.(stepKeys[4].label);
+    await nextTick();
     this.buildPlayerCharacter();
     this.buildNuraCompanion();
+    manager.itemEnd(stepKeys[4].id);
+
+    // Step 6: 3D Airplane "Rintangan Pemahaman" Arena
+    onStageLabel?.(stepKeys[5].label);
+    await nextTick();
     this.buildFlightChallengeArena();
-
-    this.setupPointerInteractions(canvas);
-
+    this.setupPointerInteractions(this.canvas);
     window.addEventListener('resize', this.onWindowResize.bind(this));
+    manager.itemEnd(stepKeys[5].id);
+
+    // Step 7: Pre-warm WebGL shaders before animation loop starts
+    onStageLabel?.(stepKeys[6].label);
+    await nextTick();
+    if (!this.isSoftwareGl) {
+      try {
+        this.renderer.compile(this.scene, this.camera);
+      } catch {
+        // non-fatal
+      }
+    }
+    this.isInitialized = true;
+    manager.itemEnd(stepKeys[6].id);
+  }
+
+  /**
+   * Software-WebGL GPU fence pacing helper so headless/CPU WebGL never starves the main thread.
+   */
+  public afterDraw(cb: () => void): number {
+    const gl = this.renderer.getContext() as WebGL2RenderingContext | null;
+    if (!gl || typeof gl.fenceSync !== 'function') {
+      return window.setTimeout(cb, 80);
+    }
+    const sync = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0);
+    gl.flush();
+    const poll = () => {
+      const state = sync && gl.getSyncParameter(sync, gl.SYNC_STATUS);
+      if (state === gl.UNSIGNALED) {
+        window.setTimeout(poll, 5);
+      } else {
+        if (sync) gl.deleteSync(sync);
+        window.setTimeout(cb, 80);
+      }
+    };
+    return window.setTimeout(poll, 5);
   }
 
   private setupPointerInteractions(canvas: HTMLCanvasElement) {
@@ -257,15 +391,38 @@ export class World3D {
     };
 
     const handlePointerDown = (event: PointerEvent) => {
-      if (this.inFlightMode) {
-        this.isFlightPointerDown = true;
-        updateFlightSteeringFromClientX(event.clientX);
-        return;
-      }
-
       const rect = canvas.getBoundingClientRect();
       this.pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
       this.pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+      if (this.inFlightMode) {
+        this.isFlightPointerDown = true;
+
+        // Direct click/tap raycasting onto any of the 4 3D Answer Boxes in the sky
+        if (!this.flightPaused && !this.flightAnswerTriggered) {
+          this.raycaster.setFromCamera(this.pointer, this.camera);
+          const boxTargets = this.answerBoxes.map((b) => b.group);
+          const hits = this.raycaster.intersectObjects(boxTargets, true);
+          if (hits.length > 0) {
+            let obj: THREE.Object3D | null = hits[0].object;
+            while (obj && obj.parent !== this.flightGroup) {
+              obj = obj.parent;
+            }
+            const matched = this.answerBoxes.find((b) => b.group === obj);
+            if (matched && !this.flightDisabledLanes.has(matched.laneIndex)) {
+              if (this.flightActiveLane === matched.laneIndex) {
+                this.boostAirplaneToAnswer();
+              } else {
+                this.selectAirplaneLane(matched.laneIndex);
+              }
+              return;
+            }
+          }
+        }
+
+        updateFlightSteeringFromClientX(event.clientX);
+        return;
+      }
 
       this.raycaster.setFromCamera(this.pointer, this.camera);
 
@@ -280,7 +437,6 @@ export class World3D {
 
     const handlePointerMove = (event: PointerEvent) => {
       if (this.inFlightMode) {
-        // Both mouse pointer hover and touch drag steer the 3D airplane smoothly
         if (event.pointerType === 'mouse' || this.isFlightPointerDown) {
           updateFlightSteeringFromClientX(event.clientX);
         }
@@ -308,9 +464,19 @@ export class World3D {
   }
 
   private onWindowResize() {
-    this.camera.aspect = window.innerWidth / window.innerHeight;
+    if (!this.renderer) return;
+    const w = Math.max(1, window.innerWidth);
+    const h = Math.max(1, window.innerHeight);
+    this.camera.aspect = w / h;
+    if (this.inFlightMode) {
+      // Shift optical center upward so 3D airplane & 4 answer boxes sit dead-center inside upper 80% sky zone
+      this.camera.setViewOffset(w, h, 0, Math.round(h * 0.1), w, h);
+    } else {
+      this.camera.clearViewOffset();
+    }
     this.camera.updateProjectionMatrix();
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
+    this.renderer.setSize(w, h);
+    this.renderer.setPixelRatio(this.isSoftwareGl ? 1 : Math.min(window.devicePixelRatio, 2));
   }
 
   private setupLighting() {
@@ -2129,58 +2295,81 @@ export class World3D {
   // ==================== 3D FLYING AIRPLANE: RINTANGAN PEMAHAMAN ====================
   private createAnswerBoxTexture(letter: string, label: string, hexColor: string, isDisabled: boolean): THREE.CanvasTexture {
     const canvas = document.createElement('canvas');
-    canvas.width = 512;
-    canvas.height = 384;
+    canvas.width = 1024;
+    canvas.height = 640;
     const ctx = canvas.getContext('2d');
     if (ctx) {
-      ctx.fillStyle = isDisabled ? 'rgba(30, 41, 59, 0.55)' : 'rgba(15, 23, 42, 0.92)';
-      ctx.roundRect(12, 12, 488, 360, 32);
+      // High-contrast dark slate card with bright border
+      ctx.fillStyle = isDisabled ? 'rgba(15, 23, 42, 0.55)' : 'rgba(9, 14, 30, 0.96)';
+      ctx.beginPath();
+      ctx.roundRect(18, 18, 988, 604, 44);
       ctx.fill();
 
       ctx.strokeStyle = isDisabled ? '#475569' : hexColor;
-      ctx.lineWidth = 14;
+      ctx.lineWidth = 22;
       ctx.stroke();
 
-      // Big Answer Letter Circle
+      // Top Header Banner with Letter Badge
+      ctx.fillStyle = isDisabled ? 'rgba(51, 65, 85, 0.5)' : `${hexColor}33`;
       ctx.beginPath();
-      ctx.arc(256, 128, 72, 0, Math.PI * 2);
-      ctx.fillStyle = isDisabled ? '#334155' : hexColor;
+      ctx.roundRect(38, 38, 948, 134, 28);
       ctx.fill();
 
-      ctx.fillStyle = isDisabled ? '#94a3b8' : '#0f172a';
-      ctx.font = '900 84px Arial, sans-serif';
+      ctx.beginPath();
+      ctx.arc(120, 105, 52, 0, Math.PI * 2);
+      ctx.fillStyle = isDisabled ? '#475569' : hexColor;
+      ctx.fill();
+
+      ctx.fillStyle = isDisabled ? '#cbd5e1' : '#020617';
+      ctx.font = '900 66px Arial, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(letter, 256, 132);
+      ctx.fillText(letter, 120, 109);
 
-      // Truncated preview text
-      ctx.fillStyle = isDisabled ? '#64748b' : '#f8fafc';
-      ctx.font = 'bold 28px Arial, sans-serif';
-      const cleaned = isDisabled ? 'DIELIMINASI (50:50)' : label;
+      ctx.fillStyle = isDisabled ? '#94a3b8' : hexColor;
+      ctx.font = '800 38px Arial, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(isDisabled ? 'DIELIMINASI (50:50)' : `PILIHAN ${letter}`, 196, 108);
+
+      // Full Crisp Wrapped Answer Text (options appear exclusively on these 3D boxes!)
+      const cleaned = isDisabled ? 'Kotak jawaban ini telah dieliminasi oleh Firasat Tajwid.' : label;
+      const fontSize = cleaned.length > 68 ? 38 : cleaned.length > 42 ? 44 : 50;
+      const lineHeight = Math.round(fontSize * 1.32);
+      ctx.fillStyle = isDisabled ? '#64748b' : '#ffffff';
+      ctx.font = `700 ${fontSize}px Arial, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      const maxWidth = 880;
       const words = cleaned.split(/\s+/);
       const lines: string[] = [];
       let current = '';
-      for (const w of words) {
-        const next = current ? `${current} ${w}` : w;
-        if (next.length > 26 && current) {
+
+      for (const word of words) {
+        const candidate = current ? `${current} ${word}` : word;
+        if (ctx.measureText(candidate).width > maxWidth && current) {
           lines.push(current);
-          current = w;
-          if (lines.length >= 2) break;
+          current = word;
         } else {
-          current = next;
+          current = candidate;
         }
       }
-      if (current && lines.length < 3) lines.push(current);
-      if (lines.length === 3 && words.join(' ').length > 74) {
-        lines[2] = lines[2].slice(0, 22) + '...';
+      if (current) lines.push(current);
+
+      const visibleLines = lines.slice(0, 4);
+      if (lines.length > 4) {
+        visibleLines[3] = visibleLines[3].slice(0, Math.max(8, visibleLines[3].length - 3)) + '...';
       }
 
-      lines.forEach((ln, idx) => {
-        ctx.fillText(ln, 256, 248 + idx * 36);
+      const blockHeight = visibleLines.length * lineHeight;
+      const startY = 390 - blockHeight / 2 + lineHeight / 2;
+      visibleLines.forEach((ln, idx) => {
+        ctx.fillText(ln, 512, startY + idx * lineHeight);
       });
     }
     const tex = new THREE.CanvasTexture(canvas);
     tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = this.maxAnisotropy;
     return tex;
   }
 
@@ -2283,12 +2472,32 @@ export class World3D {
 
     // Engine Exhaust Glow Behind Tail
     const exhaust = new THREE.Mesh(
-      new THREE.ConeGeometry(0.24, 1.1, 12),
-      new THREE.MeshBasicMaterial({ color: 0xfacc15, transparent: true, opacity: 0.75 })
+      new THREE.ConeGeometry(0.24, 1.35, 12),
+      new THREE.MeshBasicMaterial({ color: 0xfacc15, transparent: true, opacity: 0.8 })
     );
     exhaust.rotation.x = Math.PI / 2;
-    exhaust.position.set(0, 0, 2.35);
+    exhaust.position.set(0, 0, 2.45);
+    this.flightExhaust = exhaust;
     this.airplaneGroup.add(exhaust);
+
+    // Dual Wingtip Contrail Ribbons for dynamic swooping visual read
+    this.flightContrails = [];
+    [-1.75, 1.75].forEach((tx) => {
+      const contrail = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.14, 3.6),
+        new THREE.MeshBasicMaterial({
+          color: 0xe0f2fe,
+          transparent: true,
+          opacity: 0.45,
+          side: THREE.DoubleSide,
+          depthWrite: false,
+        })
+      );
+      contrail.rotation.x = -Math.PI / 2;
+      contrail.position.set(tx, 0.02, 1.75);
+      this.airplaneGroup.add(contrail);
+      this.flightContrails.push(contrail);
+    });
 
     // Airplane Glow Light
     this.airplaneLight = new THREE.PointLight(0x38bdf8, 3.0, 14);
@@ -2297,33 +2506,33 @@ export class World3D {
 
     this.flightGroup.add(this.airplaneGroup);
 
-    // 2. Build 4 Floating 3D Answer Boxes (A, B, C, D)
+    // 2. Build 4 Large, Crisp Floating 3D Answer Boxes (A, B, C, D)
     const letters = ['A', 'B', 'C', 'D'];
     const boxColors = [0x10b981, 0x38bdf8, 0xf59e0b, 0xec4899];
     const hexStrings = ['#10b981', '#38bdf8', '#f59e0b', '#ec4899'];
 
     this.answerBoxes = letters.map((letter, idx) => {
       const group = new THREE.Group();
-      group.position.set(this.flightLanePositions[idx], 4.2, -52);
+      group.position.set(this.flightLanePositions[idx], 4.6, -30);
 
       // Glowing outer crystal box
       const boxMesh = new THREE.Mesh(
-        new THREE.BoxGeometry(2.45, 2.1, 1.2),
+        new THREE.BoxGeometry(3.05, 2.05, 1.1),
         new THREE.MeshStandardMaterial({
           color: boxColors[idx],
           emissive: boxColors[idx],
           emissiveIntensity: 0.35,
           transparent: true,
-          opacity: 0.32,
+          opacity: 0.28,
           roughness: 0.2,
-          metalness: 0.3,
+          metalness: 0.35,
         })
       );
       group.add(boxMesh);
 
       // Glowing Border Frame
       const frameMesh = new THREE.Mesh(
-        new THREE.BoxGeometry(2.58, 2.24, 1.28),
+        new THREE.BoxGeometry(3.16, 2.16, 1.18),
         new THREE.MeshBasicMaterial({
           color: boxColors[idx],
           wireframe: true,
@@ -2333,13 +2542,13 @@ export class World3D {
       );
       group.add(frameMesh);
 
-      // Front Answer Plate Texture
+      // High-Res Front Answer Plate Texture (1024x640)
       const labelTex = this.createAnswerBoxTexture(letter, `Pilihan ${letter}`, hexStrings[idx], false);
       const labelMesh = new THREE.Mesh(
-        new THREE.PlaneGeometry(2.35, 1.78),
+        new THREE.PlaneGeometry(2.96, 1.88),
         new THREE.MeshBasicMaterial({ map: labelTex, transparent: true })
       );
-      labelMesh.position.set(0, 0, 0.65);
+      labelMesh.position.set(0, 0, 0.62);
       group.add(labelMesh);
 
       this.flightGroup.add(group);
@@ -2419,8 +2628,11 @@ export class World3D {
     this.flightDisabledLanes.clear();
     this.airplaneCurrentX = this.flightLanePositions[1];
     this.airplaneTargetX = this.flightLanePositions[1];
+    this.airplaneBankAngle = 0;
+    this.airplaneYawAngle = 0;
+    this.airplanePitchAngle = 0;
     this.flightActiveLane = 1;
-    this.airplaneGroup.position.set(this.airplaneCurrentX, 4.2, 0);
+    this.airplaneGroup.position.set(this.airplaneCurrentX, 4.1, 0.6);
     this.airplaneGroup.rotation.set(0, 0, 0);
 
     // Hide walking meshes & show flight sky arena
@@ -2440,12 +2652,16 @@ export class World3D {
     };
     const palette = skyColors[stageId] || skyColors[1];
     this.scene.background = new THREE.Color(palette.bg);
-    this.scene.fog = new THREE.FogExp2(palette.fog, 0.011);
+    this.scene.fog = new THREE.FogExp2(palette.fog, 0.0085);
     this.hemiLight.intensity = 2.2;
     this.sunLight.intensity = 2.4;
 
-    this.camera.position.set(0, 7.2, 9.2);
-    this.camera.lookAt(0, 4.0, -18);
+    // Frame optical center in the middle of the upper 80% sky viewport (above 20% bottom question panel)
+    const w = Math.max(1, window.innerWidth);
+    const h = Math.max(1, window.innerHeight);
+    this.camera.setViewOffset(w, h, 0, Math.round(h * 0.1), w, h);
+    this.camera.position.set(0, 6.2, 8.8);
+    this.camera.lookAt(0, 4.3, -14);
   }
 
   public startFlightQuestion(durationSec: number, optionLabels: string[], disabledIndices: number[] = []) {
@@ -2458,7 +2674,7 @@ export class World3D {
 
     this.updateFlightBoxTextures(optionLabels);
     this.answerBoxes.forEach((b, idx) => {
-      b.group.position.set(this.flightLanePositions[idx], 4.2, -52);
+      b.group.position.set(this.flightLanePositions[idx], 4.8, -30);
       b.group.scale.setScalar(1);
     });
   }
@@ -2482,7 +2698,7 @@ export class World3D {
       labelMat.needsUpdate = true;
 
       const boxMat = b.boxMesh.material as THREE.MeshStandardMaterial;
-      boxMat.opacity = isDisabled ? 0.08 : 0.32;
+      boxMat.opacity = isDisabled ? 0.08 : 0.28;
     });
   }
 
@@ -2492,14 +2708,14 @@ export class World3D {
 
   public steerAirplaneByAxis(axisX: number, delta: number) {
     if (!this.inFlightMode || this.flightPaused) return;
-    this.airplaneTargetX += axisX * delta * 11.5;
-    this.airplaneTargetX = Math.max(-5.1, Math.min(5.1, this.airplaneTargetX));
+    this.airplaneTargetX += axisX * delta * 12.5;
+    this.airplaneTargetX = Math.max(-5.6, Math.min(5.6, this.airplaneTargetX));
   }
 
   public steerAirplaneToNormalizedX(normX: number) {
     if (!this.inFlightMode || this.flightPaused) return;
-    const clamped = Math.max(-1, Math.min(1, normX * 1.15));
-    this.airplaneTargetX = clamped * 4.85;
+    const clamped = Math.max(-1, Math.min(1, normX * 1.18));
+    this.airplaneTargetX = clamped * 5.45;
   }
 
   public selectAirplaneLane(laneIndex: number) {
@@ -2531,6 +2747,8 @@ export class World3D {
     this.flightPaused = true;
     this.flightGroup.visible = false;
     this.playerGroup.visible = !this.isTeacherSpectator;
+    this.camera.clearViewOffset();
+    this.camera.updateProjectionMatrix();
 
     if (this.currentActiveStage > 0) {
       this.enterStageBiome(this.currentActiveStage);
@@ -2582,17 +2800,26 @@ export class World3D {
   }
 
   public update(delta: number, moveVector: THREE.Vector2, isRunning: boolean) {
+    if (!this.isInitialized || !this.renderer) return;
     const time = performance.now() * 0.003;
 
     // 1. UPDATE 3D AIRPLANE "RINTANGAN PEMAHAMAN" MODE VS ROAMING MODE
     if (this.inFlightMode) {
-      // Spin propeller continuously
-      this.airplanePropeller.rotation.z += delta * (this.flightBoosted ? 45 : 28);
+      // Spin propeller continuously & pulse exhaust flame
+      this.airplanePropeller.rotation.z += delta * (this.flightBoosted ? 48 : 30);
+      if (this.flightExhaust) {
+        const flameScale = (this.flightBoosted ? 1.55 : 1.0) + Math.sin(time * 24) * 0.16;
+        this.flightExhaust.scale.set(1, flameScale, 1);
+      }
+      this.flightContrails.forEach((ct, i) => {
+        const mat = ct.material as THREE.MeshBasicMaterial;
+        mat.opacity = 0.28 + Math.sin(time * 5 + i) * 0.14 + (this.flightBoosted ? 0.22 : 0);
+      });
 
       // Stream clouds & sky stars toward camera
-      const speedMult = this.flightBoosted ? 3.5 : 1.0;
+      const speedMult = this.flightBoosted ? 3.8 : 1.15;
       this.flightClouds.forEach((cl) => {
-        cl.position.z += delta * 14 * speedMult;
+        cl.position.z += delta * 15 * speedMult;
         if (cl.position.z > 14) {
           cl.position.z = -72;
         }
@@ -2600,7 +2827,7 @@ export class World3D {
       if (this.flightStars) {
         const sPos = this.flightStars.geometry.attributes.position.array as Float32Array;
         for (let i = 0; i < sPos.length; i += 3) {
-          sPos[i + 2] += delta * 24 * speedMult;
+          sPos[i + 2] += delta * 26 * speedMult;
           if (sPos[i + 2] > 12) {
             sPos[i + 2] = -76;
           }
@@ -2613,12 +2840,21 @@ export class World3D {
         this.steerAirplaneByAxis(moveVector.x, delta);
       }
 
-      // Smooth airplane lateral motion & banking tilt
+      // Smooth damped airplane swooping & weaving kinematics ("melintas, meliuk mencari jawaban")
       const prevX = this.airplaneCurrentX;
-      this.airplaneCurrentX += (this.airplaneTargetX - this.airplaneCurrentX) * Math.min(1, delta * 9.5);
+      this.airplaneCurrentX = THREE.MathUtils.damp(this.airplaneCurrentX, this.airplaneTargetX, 7.5, delta);
       const lateralVel = (this.airplaneCurrentX - prevX) / Math.max(0.001, delta);
-      const desiredBank = Math.max(-0.55, Math.min(0.55, -lateralVel * 0.065));
-      this.airplaneBankAngle += (desiredBank - this.airplaneBankAngle) * Math.min(1, delta * 10);
+
+      // Natural organic sky-weaving oscillation + expressive wing bank, nose yaw & climb/dive pitch
+      const weaveX = Math.sin(time * 1.45) * 0.24;
+      const weaveY = Math.sin(time * 2.15) * 0.34 + Math.cos(time * 1.1) * 0.14;
+      const desiredBank = THREE.MathUtils.clamp(-lateralVel * 0.085 - Math.cos(time * 1.45) * 0.14, -0.68, 0.68);
+      const desiredYaw = THREE.MathUtils.clamp(-lateralVel * 0.032, -0.26, 0.26);
+      const desiredPitch = THREE.MathUtils.clamp(Math.cos(time * 2.15) * 0.12 + (this.flightBoosted ? 0.08 : 0), -0.22, 0.22);
+
+      this.airplaneBankAngle = THREE.MathUtils.damp(this.airplaneBankAngle, desiredBank, 9, delta);
+      this.airplaneYawAngle = THREE.MathUtils.damp(this.airplaneYawAngle, desiredYaw, 8, delta);
+      this.airplanePitchAngle = THREE.MathUtils.damp(this.airplanePitchAngle, desiredPitch, 8, delta);
 
       let extraRoll = 0;
       if (this.flightRollTimer > 0) {
@@ -2635,10 +2871,13 @@ export class World3D {
         shakeY = (Math.random() - 0.5) * 0.25;
       }
 
-      const hoverY = 4.2 + Math.sin(time * 3.2) * 0.16 + shakeY;
-      this.airplaneGroup.position.set(this.airplaneCurrentX + shakeX, hoverY, 0);
-      this.airplaneGroup.rotation.z = this.airplaneBankAngle + extraRoll;
-      this.airplaneGroup.rotation.x = Math.sin(time * 2.2) * 0.04;
+      const hoverY = 4.15 + weaveY + shakeY;
+      this.airplaneGroup.position.set(this.airplaneCurrentX + weaveX + shakeX, hoverY, 0.6);
+      this.airplaneGroup.rotation.set(
+        this.airplanePitchAngle,
+        this.airplaneYawAngle,
+        this.airplaneBankAngle + extraRoll
+      );
 
       // Determine nearest lane (0..3)
       let nearestLane = 0;
@@ -2655,7 +2894,7 @@ export class World3D {
         this.onFlightLaneChange?.(nearestLane);
       }
 
-      // Advance approaching 4 answer boxes synchronized to question duration
+      // Advance approaching 4 3D answer boxes synchronized to question duration
       if (!this.flightPaused && !this.flightAnswerTriggered) {
         if (this.flightBoosted) {
           this.flightElapsed += Math.max(delta * 18, (this.flightDuration - this.flightElapsed) * delta * 8 + delta * 10);
@@ -2667,19 +2906,20 @@ export class World3D {
         const remainingSec = Math.max(0, this.flightDuration - this.flightElapsed);
         this.onFlightTimerTick?.(remainingSec, progress);
 
-        const boxZ = -52 + progress * 52; // Approaches from z=-52 to z=0
+        const boxZ = -30 + progress * 30.6; // Approaches cleanly from z=-30 to z=0.6 (readable from second 1!)
         this.answerBoxes.forEach((b, idx) => {
           b.group.position.set(
             this.flightLanePositions[idx],
-            4.2 + Math.sin(time * 2 + idx) * 0.14,
+            4.8 + Math.sin(time * 2 + idx) * 0.18,
             boxZ
           );
           const isAligned = idx === this.flightActiveLane && !this.flightDisabledLanes.has(idx);
-          const targetScale = isAligned ? 1.15 : 0.96;
-          b.group.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), Math.min(1, delta * 10));
+          const targetScale = isAligned ? 1.16 : 0.96;
+          _tmpScaleVec.set(targetScale, targetScale, targetScale);
+          b.group.scale.lerp(_tmpScaleVec, Math.min(1, delta * 10));
           const bMat = b.boxMesh.material as THREE.MeshStandardMaterial;
           if (!this.flightDisabledLanes.has(idx)) {
-            bMat.emissiveIntensity = isAligned ? 0.95 : 0.3;
+            bMat.emissiveIntensity = isAligned ? 1.05 : 0.3;
           }
         });
 
@@ -2690,14 +2930,14 @@ export class World3D {
         }
       }
 
-      // Elevated behind-plane chase camera leaving clean bottom area for AKM question dock
-      const targetCamX = this.airplaneCurrentX * 0.42;
-      const targetCamY = 6.95;
-      const targetCamZ = 9.0;
-      this.camera.position.x += (targetCamX - this.camera.position.x) * 0.1;
-      this.camera.position.y += (targetCamY - this.camera.position.y) * 0.1;
-      this.camera.position.z += (targetCamZ - this.camera.position.z) * 0.1;
-      this.camera.lookAt(this.airplaneCurrentX * 0.32, 3.6, -16);
+      // Dynamic behind-plane chase camera keeping 3D airplane & all 4 answer boxes centered in upper 80% sky zone
+      const targetCamX = this.airplaneCurrentX * 0.36;
+      const targetCamY = 6.15 + Math.sin(time * 1.2) * 0.12;
+      const targetCamZ = 8.9;
+      this.camera.position.x = THREE.MathUtils.damp(this.camera.position.x, targetCamX, 6, delta);
+      this.camera.position.y = THREE.MathUtils.damp(this.camera.position.y, targetCamY, 6, delta);
+      this.camera.position.z = THREE.MathUtils.damp(this.camera.position.z, targetCamZ, 6, delta);
+      this.camera.lookAt(this.airplaneCurrentX * 0.28, 4.35, -14);
     } else {
       // Normal Campus / Stage Map Movement & Raised Panoramic Follow Camera
       const isMoving = moveVector.lengthSq() > 0.001;

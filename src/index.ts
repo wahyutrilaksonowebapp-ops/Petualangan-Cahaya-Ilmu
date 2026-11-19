@@ -104,17 +104,19 @@ class GameApp {
   private nuraBubbleTimer: number | null = null;
   private toastTimer: number | null = null;
 
-  // Clock
+  // LoadingManager, Clock & Animation Loop state
+  private loadingManager: THREE.LoadingManager;
+  private isAnimationLoopActive: boolean = false;
+  private moveVec: THREE.Vector2 = new THREE.Vector2(0, 0);
   private clock: THREE.Clock;
 
-  constructor() {
-    const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
+  constructor(canvas: HTMLCanvasElement) {
     this.world = new World3D(canvas);
     this.multiplayer = new MultiplayerClient();
     this.clock = new THREE.Clock();
+    this.loadingManager = this.createSceneLoadingManager();
 
     this.state = this.loadState();
-    this.world.setCostume(this.state.costume);
 
     this.initMultiplayerCallbacks();
     this.initFlightCallbacks();
@@ -123,14 +125,93 @@ class GameApp {
     this.initShopAndSocialFeatures();
     this.initTeacherDashboardUI();
     this.initInputListeners();
-    this.updateHUD();
     void this.fetchInitialMissionConfig();
 
     window.addEventListener('beforeunload', () => {
       markLocalStudentOffline(this.studentId);
     });
 
-    // Start main 3D animation loop
+    // Load all Three.js assets, PBR environment, 5 worlds, airplane arena & shaders before starting render loop
+    void this.bootstrapScene();
+  }
+
+  private createSceneLoadingManager(): THREE.LoadingManager {
+    const manager = new THREE.LoadingManager();
+    const progressBar = document.getElementById('loading-progress-bar');
+    const percentageEl = document.getElementById('loading-percentage');
+    const statusEl = document.getElementById('loading-status-text');
+    const overlayEl = document.getElementById('loading-overlay');
+
+    const setProgress = (pct: number) => {
+      const clamped = Math.max(0, Math.min(100, Math.round(pct)));
+      if (progressBar) progressBar.style.width = `${clamped}%`;
+      if (percentageEl) percentageEl.textContent = `${clamped}%`;
+    };
+
+    manager.onStart = (_url, itemsLoaded, itemsTotal) => {
+      const pct = itemsTotal > 0 ? (itemsLoaded / itemsTotal) * 100 : 0;
+      setProgress(pct);
+    };
+
+    manager.onProgress = (_url, itemsLoaded, itemsTotal) => {
+      const pct = itemsTotal > 0 ? (itemsLoaded / itemsTotal) * 100 : 100;
+      setProgress(pct);
+    };
+
+    manager.onError = (url) => {
+      console.error('Gagal memuat aset 3D:', url);
+      if (statusEl) {
+        statusEl.textContent = `Peringatan: gagal memuat aset (${url}). Melanjutkan...`;
+      }
+    };
+
+    manager.onLoad = () => {
+      setProgress(100);
+      if (statusEl) {
+        statusEl.textContent = 'Dunia 3D & Pesawat Rintangan Pemahaman siap!';
+      }
+
+      // Now safe to apply player costume, Nura evolution, reveal login modal, and start render loop
+      this.world.setCostume(this.state.costume);
+      this.updateHUD();
+      this.startAnimationLoop();
+
+      window.setTimeout(() => {
+        if (overlayEl) {
+          overlayEl.classList.add('opacity-0', 'pointer-events-none');
+          window.setTimeout(() => overlayEl.classList.add('hidden'), 420);
+        }
+        if (this.role === 'none') {
+          document.getElementById('modal-start')?.classList.remove('hidden');
+        }
+      }, 220);
+    };
+
+    return manager;
+  }
+
+  private async bootstrapScene() {
+    const statusEl = document.getElementById('loading-status-text');
+    try {
+      await this.world.initialize(this.loadingManager, (label) => {
+        if (statusEl) statusEl.textContent = label;
+      });
+    } catch (err) {
+      console.error('Inisialisasi Three.js WebGL gagal:', err);
+      if (statusEl) {
+        statusEl.className = 'text-xs text-red-300 font-semibold mt-1';
+        statusEl.textContent =
+          err instanceof Error
+            ? `Gagal menginisialisasi grafis 3D WebGL: ${err.message}`
+            : 'Gagal menginisialisasi grafis 3D WebGL. Pastikan browser mendukung WebGL.';
+      }
+    }
+  }
+
+  private startAnimationLoop() {
+    if (this.isAnimationLoopActive || !this.world.isInitialized) return;
+    this.isAnimationLoopActive = true;
+    this.clock.start();
     this.tick();
   }
 
@@ -267,8 +348,10 @@ class GameApp {
       }
     }
 
-    this.world.evolveNura(this.state.level);
-    this.world.setCostume(this.state.costume);
+    if (this.world.isInitialized) {
+      this.world.evolveNura(this.state.level);
+      this.world.setCostume(this.state.costume);
+    }
     this.updateOnlineCounterUI();
   }
 
@@ -875,9 +958,8 @@ class GameApp {
     this.world.onFlightLaneChange = (laneIndex: number) => {
       const indicator = document.getElementById('flight-lane-indicator');
       if (indicator) {
-        indicator.textContent = `Jalur Aktif Pesawat: ${letters[laneIndex] || 'B'}`;
+        indicator.textContent = `Pesawat Membidik: Kotak ${letters[laneIndex] || 'B'}`;
       }
-      this.highlightActiveLaneOption(laneIndex);
     };
 
     this.world.onFlightTimerTick = (remainingSec: number, progress: number) => {
@@ -902,21 +984,6 @@ class GameApp {
     this.world.onFlightAnswerReached = (laneIndex: number) => {
       this.resolveFlightAnswer(laneIndex);
     };
-  }
-
-  private highlightActiveLaneOption(activeLane: number) {
-    if (this.flightQuestionResolved) return;
-    for (let i = 0; i < 4; i++) {
-      const btn = document.getElementById(`quiz-opt-btn-${i}`) as HTMLButtonElement | null;
-      if (!btn || btn.disabled) continue;
-      if (i === activeLane) {
-        btn.className =
-          'p-2.5 sm:p-3 rounded-2xl bg-amber-500/20 border-2 border-amber-400 text-left text-xs sm:text-sm font-bold flex items-center gap-2.5 transition-all shadow-lg ring-2 ring-amber-400/40 scale-[1.01]';
-      } else {
-        btn.className =
-          'p-2.5 sm:p-3 rounded-2xl bg-slate-800/85 border border-slate-700 hover:border-sky-400 text-left text-xs sm:text-sm font-semibold flex items-center gap-2.5 transition-all';
-      }
-    }
   }
 
   // ==================== GENERAL GAME UI BINDINGS ====================
@@ -1690,51 +1757,20 @@ class GameApp {
 
     const qNum = document.getElementById('quiz-question-number');
     if (qNum) {
-      qNum.innerHTML = `<i class="fa-solid fa-plane"></i> Soal ${idx + 1} dari ${this.flightDeck.length} • Rintangan Pemahaman AKM`;
+      qNum.innerHTML = `<i class="fa-solid fa-plane"></i> Soal ${idx + 1} / ${this.flightDeck.length} • AKM`;
     }
 
     const qText = document.getElementById('quiz-question-text');
     if (qText) qText.textContent = q.question;
 
-    // Build 4 Lane-Synced Option Cards
-    const optCont = document.getElementById('quiz-options-container');
-    if (optCont) {
-      optCont.innerHTML = '';
-      const letters = ['A', 'B', 'C', 'D'];
-      const badgeColors = [
-        'bg-emerald-500/20 border-emerald-400 text-emerald-300',
-        'bg-sky-500/20 border-sky-400 text-sky-300',
-        'bg-amber-500/20 border-amber-400 text-amber-300',
-        'bg-pink-500/20 border-pink-400 text-pink-300',
-      ];
-      q.options.forEach((opt, optIdx) => {
-        const btn = document.createElement('button');
-        btn.id = `quiz-opt-btn-${optIdx}`;
-        btn.type = 'button';
-        btn.className =
-          'p-2.5 sm:p-3 rounded-2xl bg-slate-800/85 border border-slate-700 hover:border-sky-400 text-left text-xs sm:text-sm font-semibold flex items-center gap-2.5 transition-all';
-        btn.innerHTML = `
-          <span class="w-7 h-7 rounded-xl border ${badgeColors[optIdx]} flex items-center justify-center font-black text-xs flex-shrink-0">${letters[optIdx]}</span>
-          <span class="text-slate-100 leading-tight">${escapeHtml(opt)}</span>
-        `;
-        btn.addEventListener('click', () => {
-          if (this.flightQuestionResolved || btn.disabled) return;
-          sound.playButtonClick();
-          // If airplane is already aligned with this lane, boost directly into the box; otherwise steer airplane to it
-          if (this.world.flightActiveLane === optIdx) {
-            this.world.boostAirplaneToAnswer();
-          } else {
-            this.world.selectAirplaneLane(optIdx);
-          }
-        });
-        optCont.appendChild(btn);
-      });
-    }
-
-    // Start 3D Airplane automatic approach timed to Teacher-configured duration
+    // Answer options (A, B, C, D) appear ONLY on the 3D floating sky boxes approached by the airplane
     const duration = this.missionConfig.durationPerQuestionSec || 25;
     this.world.startFlightQuestion(duration, q.options, []);
-    this.highlightActiveLaneOption(this.world.flightActiveLane);
+    const letters = ['A', 'B', 'C', 'D'];
+    const indicator = document.getElementById('flight-lane-indicator');
+    if (indicator) {
+      indicator.textContent = `Pesawat Membidik: Kotak ${letters[this.world.flightActiveLane] || 'B'}`;
+    }
     this.renderFlightHudState();
   }
 
@@ -1749,20 +1785,6 @@ class GameApp {
 
     const isCorrect = chosenLane === q.answer;
     if (isCorrect) this.flightCorrectCount++;
-
-    // Lock and colorize all 4 option buttons
-    for (let i = 0; i < q.options.length; i++) {
-      const b = document.getElementById(`quiz-opt-btn-${i}`) as HTMLButtonElement | null;
-      if (!b) continue;
-      b.disabled = true;
-      if (i === q.answer) {
-        b.className =
-          'p-2.5 sm:p-3 rounded-2xl bg-emerald-950/90 border-2 border-emerald-400 text-left text-xs sm:text-sm font-bold flex items-center gap-2.5';
-      } else if (i === chosenLane) {
-        b.className =
-          'p-2.5 sm:p-3 rounded-2xl bg-red-950/90 border-2 border-red-500 text-left text-xs sm:text-sm font-semibold flex items-center gap-2.5';
-      }
-    }
 
     const banner = document.getElementById('quiz-feedback-banner');
     const feedbackIcon = document.getElementById('quiz-feedback-icon');
@@ -1779,12 +1801,12 @@ class GameApp {
 
       if (banner && feedbackText) {
         banner.className =
-          'p-2.5 sm:p-3 rounded-2xl text-xs font-semibold flex items-center justify-between gap-3 bg-emerald-900/60 border border-emerald-500/60 text-emerald-100';
+          'px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold flex items-center justify-between gap-2 flex-shrink-0 bg-emerald-900/70 border border-emerald-500/60 text-emerald-100';
         if (feedbackIcon) {
-          feedbackIcon.className = 'w-6 h-6 rounded-lg bg-emerald-500/25 text-emerald-300 flex items-center justify-center flex-shrink-0 text-xs';
+          feedbackIcon.className = 'w-5 h-5 rounded-md bg-emerald-500/25 text-emerald-300 flex items-center justify-center flex-shrink-0 text-[10px]';
           feedbackIcon.innerHTML = '<i class="fa-solid fa-check"></i>';
         }
-        feedbackText.textContent = `TEPAT! Pesawat menembus kotak ${letters[chosenLane]}! ${q.explanation}`;
+        feedbackText.textContent = `TEPAT! Kotak ${letters[chosenLane]} benar. ${q.explanation}`;
         banner.classList.remove('hidden');
       }
     } else {
@@ -1796,24 +1818,24 @@ class GameApp {
         this.shieldActiveForStage = false;
         if (banner && feedbackText) {
           banner.className =
-            'p-2.5 sm:p-3 rounded-2xl text-xs font-semibold flex items-center justify-between gap-3 bg-amber-900/60 border border-amber-500/60 text-amber-100';
+            'px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold flex items-center justify-between gap-2 flex-shrink-0 bg-amber-900/70 border border-amber-500/60 text-amber-100';
           if (feedbackIcon) {
-            feedbackIcon.className = 'w-6 h-6 rounded-lg bg-amber-500/25 text-amber-300 flex items-center justify-center flex-shrink-0 text-xs';
+            feedbackIcon.className = 'w-5 h-5 rounded-md bg-amber-500/25 text-amber-300 flex items-center justify-center flex-shrink-0 text-[10px]';
             feedbackIcon.innerHTML = '<i class="fa-solid fa-shield"></i>';
           }
-          feedbackText.textContent = `Perisai Sabar melindungi pesawatmu! Jawaban tepat: ${letters[q.answer]} (${q.options[q.answer]}).`;
+          feedbackText.textContent = `Perisai Sabar melindungi pesawat! Jawaban tepat: ${letters[q.answer]} (${q.options[q.answer]}).`;
           banner.classList.remove('hidden');
         }
       } else {
         this.playerHearts = Math.max(0, this.playerHearts - 1);
         if (banner && feedbackText) {
           banner.className =
-            'p-2.5 sm:p-3 rounded-2xl text-xs font-semibold flex items-center justify-between gap-3 bg-red-900/60 border border-red-500/60 text-red-100';
+            'px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold flex items-center justify-between gap-2 flex-shrink-0 bg-red-900/70 border border-red-500/60 text-red-100';
           if (feedbackIcon) {
-            feedbackIcon.className = 'w-6 h-6 rounded-lg bg-red-500/25 text-red-300 flex items-center justify-center flex-shrink-0 text-xs';
+            feedbackIcon.className = 'w-5 h-5 rounded-md bg-red-500/25 text-red-300 flex items-center justify-center flex-shrink-0 text-[10px]';
             feedbackIcon.innerHTML = '<i class="fa-solid fa-xmark"></i>';
           }
-          feedbackText.textContent = `Pesawat memilih ${letters[chosenLane]}, jawaban tepat: ${letters[q.answer]} (${q.options[q.answer]}). ${q.explanation}`;
+          feedbackText.textContent = `Pilihan ${letters[chosenLane]} kurang tepat. Jawaban benar: ${letters[q.answer]} (${q.options[q.answer]}).`;
           banner.classList.remove('hidden');
         }
       }
@@ -1943,15 +1965,7 @@ class GameApp {
     const toDisable = wrongIndices.slice(0, 2);
     this.flightDisabledLanes = toDisable;
 
-    toDisable.forEach((idx) => {
-      const b = document.getElementById(`quiz-opt-btn-${idx}`) as HTMLButtonElement | null;
-      if (b) {
-        b.disabled = true;
-        b.style.opacity = '0.25';
-      }
-    });
-
-    // Visually dim the 2 eliminated 3D Answer Boxes in the sky too!
+    // Visually dim the 2 eliminated 3D Answer Boxes in the sky
     this.world.updateFlightBoxTextures(q.options, toDisable);
 
     // If airplane is currently on a disabled lane, gently nudge it to an active lane
@@ -1960,6 +1974,7 @@ class GameApp {
       this.world.selectAirplaneLane(safeLane);
     }
 
+    this.showToast('50:50 aktif! 2 kotak jawaban 3D yang salah telah diredupkan di langit.', 'info');
     this.renderFlightHudState();
   }
 
@@ -2219,10 +2234,10 @@ class GameApp {
 
   // ==================== MAIN ANIMATION & MULTIPLAYER SYNC LOOP ====================
   private tick() {
-    requestAnimationFrame(this.tick.bind(this));
+    if (!this.world.isInitialized) return;
 
     const delta = Math.min(this.clock.getDelta(), 0.05);
-    const move = new THREE.Vector2(0, 0);
+    const move = this.moveVec.set(0, 0);
 
     const anyBlockingModalOpen =
       !document.getElementById('modal-start')?.classList.contains('hidden') ||
@@ -2306,9 +2321,27 @@ class GameApp {
     } else {
       chatPrompt?.classList.add('hidden');
     }
+
+    // Pace frames via GPU fence on software WebGL or native rAF on hardware GPUs
+    if (this.world.isSoftwareGl) {
+      this.world.afterDraw(() => this.tick());
+    } else {
+      requestAnimationFrame(() => this.tick());
+    }
   }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  new GameApp();
-});
+function mountGameApp() {
+  const canvas = document.getElementById('game-canvas');
+  if (!(canvas instanceof HTMLCanvasElement)) {
+    console.error('Elemen canvas #game-canvas tidak ditemukan saat DOM interaktif.');
+    return;
+  }
+  new GameApp(canvas);
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', mountGameApp, { once: true });
+} else {
+  mountGameApp();
+}
