@@ -105,20 +105,98 @@ export interface MultiplayerCallbacks {
 
 export class MultiplayerClient {
   private ws: WebSocket | null = null;
+  private bc: BroadcastChannel | null = null;
   private callbacks: MultiplayerCallbacks = {};
   private joinPayload: Record<string, unknown> | null = null;
   private reconnectTimer: number | null = null;
   private pendingQueue: string[] = [];
   private lastMoveSentAt: number = 0;
   private manuallyClosed: boolean = false;
+  private wsConnected: boolean = false;
+  private wsFailCount: number = 0;
 
   public setCallbacks(cb: MultiplayerCallbacks) {
     this.callbacks = cb;
   }
 
-  public connect(joinPayload: Record<string, unknown>) {
+  private ensureBroadcastChannel() {
+    if (this.bc || typeof BroadcastChannel === 'undefined') return;
+    try {
+      this.bc = new BroadcastChannel('cahaya_ilmu_realtime_v1');
+      this.bc.onmessage = (event) => {
+        const msg = event.data;
+        if (!msg || typeof msg !== 'object') return;
+        // When WS is connected, let the authoritative server handle multiplayer events
+        if (this.wsConnected && msg.type !== 'analytics:update') return;
+
+        switch (msg.type) {
+          case 'bc:hello':
+            if (this.joinPayload?.role === 'student' && this.joinPayload.studentId) {
+              this.bc?.postMessage({
+                type: 'player:joined',
+                player: this.buildLocalPlayerState(),
+              });
+            }
+            break;
+          case 'player:joined':
+            if (msg.player) this.callbacks.onPlayerJoined?.(msg.player);
+            break;
+          case 'player:moved':
+            if (msg.player) this.callbacks.onPlayerMoved?.(msg.player);
+            break;
+          case 'player:left':
+            if (msg.playerId) this.callbacks.onPlayerLeft?.(msg.playerId);
+            break;
+          case 'chat:message':
+            if (msg.message) this.callbacks.onChatMessage?.(msg.message);
+            break;
+          case 'mission:config':
+            if (msg.config) this.callbacks.onMissionConfig?.(msg.config);
+            break;
+          case 'analytics:update':
+            if (msg.data) this.callbacks.onAnalyticsUpdate?.(msg.data);
+            break;
+        }
+      };
+    } catch {
+      this.bc = null;
+    }
+  }
+
+  private buildLocalPlayerState(): LiveRemotePlayer {
+    const jp = this.joinPayload || {};
+    return {
+      id: String(jp.studentId || ''),
+      name: String(jp.name || 'Santri'),
+      institution: String(jp.institution || 'SDN Kedungringin I Beji'),
+      grade: Number(jp.grade || 6),
+      level: Number(jp.level || 1),
+      costume: String(jp.costume || 'sd'),
+      stageId: Number(jp.stageId || 0),
+      x: Number(jp.x || 0),
+      y: Number(jp.y || 0),
+      z: Number(jp.z || 5),
+      rotY: Number(jp.rotY || 0),
+      isMoving: false,
+    };
+  }
+
+  public connect(joinPayload: Record<string, unknown>, preferLocalOnly: boolean = false) {
     this.manuallyClosed = false;
     this.joinPayload = joinPayload;
+    this.ensureBroadcastChannel();
+
+    if (joinPayload.role === 'student' && joinPayload.studentId) {
+      this.bc?.postMessage({ type: 'player:joined', player: this.buildLocalPlayerState() });
+      this.bc?.postMessage({ type: 'bc:hello' });
+    } else if (joinPayload.role === 'teacher') {
+      this.bc?.postMessage({ type: 'bc:hello' });
+    }
+
+    if (preferLocalOnly) {
+      this.callbacks.onConnectionChange?.(true);
+      return;
+    }
 
     if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
       this.sendRaw({ type: 'auth:join', ...joinPayload });
@@ -133,6 +211,8 @@ export class MultiplayerClient {
       this.ws = ws;
 
       ws.onopen = () => {
+        this.wsConnected = true;
+        this.wsFailCount = 0;
         this.callbacks.onConnectionChange?.(true);
         if (this.joinPayload) {
           ws.send(JSON.stringify({ type: 'auth:join', ...this.joinPayload }));
@@ -180,29 +260,39 @@ export class MultiplayerClient {
       };
 
       ws.onclose = () => {
-        this.callbacks.onConnectionChange?.(false);
+        this.wsConnected = false;
         this.ws = null;
-        if (!this.manuallyClosed && this.joinPayload) {
+        this.wsFailCount++;
+        // If BroadcastChannel is active, keep UI indicator healthy in local fallback mode
+        this.callbacks.onConnectionChange?.(Boolean(this.bc));
+
+        // Retry WS up to 3 times with backoff, then remain cleanly in BroadcastChannel mode
+        if (!this.manuallyClosed && this.joinPayload && this.wsFailCount <= 3) {
           if (this.reconnectTimer) window.clearTimeout(this.reconnectTimer);
           this.reconnectTimer = window.setTimeout(() => {
             if (this.joinPayload && !this.manuallyClosed) {
-              this.connect(this.joinPayload);
+              this.connect(this.joinPayload, false);
             }
-          }, 2200);
+          }, 2500 * this.wsFailCount);
         }
       };
 
       ws.onerror = () => {
-        // onclose will handle reconnect
+        // onclose handles graceful fallback
       };
-    } catch (err) {
-      console.warn('WebSocket init failed:', err);
+    } catch {
+      this.callbacks.onConnectionChange?.(Boolean(this.bc));
     }
   }
 
   public disconnect() {
     this.manuallyClosed = true;
+    if (this.joinPayload?.studentId) {
+      this.bc?.postMessage({ type: 'player:left', playerId: String(this.joinPayload.studentId) });
+    }
     this.joinPayload = null;
+    this.wsConnected = false;
+    this.wsFailCount = 0;
     if (this.reconnectTimer) {
       window.clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
@@ -226,11 +316,44 @@ export class MultiplayerClient {
     const now = performance.now();
     if (!force && now - this.lastMoveSentAt < 65) return; // ~15Hz throttle
     this.lastMoveSentAt = now;
-    this.sendRaw({ type: 'player:move', ...data }, false);
+
+    if (this.joinPayload) {
+      this.joinPayload.x = data.x;
+      this.joinPayload.y = data.y;
+      this.joinPayload.z = data.z;
+      this.joinPayload.rotY = data.rotY;
+      this.joinPayload.stageId = data.stageId;
+      this.joinPayload.costume = data.costume;
+      this.joinPayload.level = data.level;
+    }
+
+    if (this.wsConnected) {
+      this.sendRaw({ type: 'player:move', ...data }, false);
+    } else if (this.bc && this.joinPayload?.studentId) {
+      this.bc.postMessage({
+        type: 'player:moved',
+        player: { ...this.buildLocalPlayerState(), isMoving: data.isMoving },
+      });
+    }
   }
 
   public sendChat(text: string, toId?: string, toName?: string) {
-    this.sendRaw({ type: 'chat:send', text, toId, toName }, true);
+    if (this.wsConnected) {
+      this.sendRaw({ type: 'chat:send', text, toId, toName }, true);
+    } else if (this.joinPayload?.studentId) {
+      const chatMsg: LiveChatMessage = {
+        id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        fromId: String(this.joinPayload.studentId),
+        fromName: String(this.joinPayload.name || 'Santri'),
+        fromInstitution: String(this.joinPayload.institution || 'SDN Kedungringin I Beji'),
+        toId,
+        toName,
+        text: text.slice(0, 220),
+        timestamp: Date.now(),
+      };
+      this.callbacks.onChatMessage?.(chatMsg);
+      this.bc?.postMessage({ type: 'chat:message', message: chatMsg });
+    }
   }
 
   public sendStudentAnswer(payload: {
@@ -243,7 +366,9 @@ export class MultiplayerClient {
     level: number;
     coins: number;
   }) {
-    this.sendRaw({ type: 'student:answer', ...payload }, true);
+    if (this.wsConnected) {
+      this.sendRaw({ type: 'student:answer', ...payload }, true);
+    }
   }
 
   public sendStageComplete(payload: {
@@ -253,7 +378,9 @@ export class MultiplayerClient {
     level: number;
     coins: number;
   }) {
-    this.sendRaw({ type: 'student:stage_complete', ...payload }, true);
+    if (this.wsConnected) {
+      this.sendRaw({ type: 'student:stage_complete', ...payload }, true);
+    }
   }
 
   private sendRaw(payload: Record<string, unknown>, queueIfOffline: boolean = true) {

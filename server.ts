@@ -10,7 +10,7 @@ import type { WebSocket } from 'ws';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
 const HOST = '0.0.0.0';
 const DATA_DIR = path.join(__dirname, 'data');
 const STORE_FILE = path.join(DATA_DIR, 'store.json');
@@ -593,6 +593,11 @@ async function startServer() {
       `attachment; filename="Analisis_AKM_PAI_Beji_${new Date().toISOString().slice(0, 10)}.csv"`
     );
     res.send(csvContent);
+  });
+
+  // Guard: ensure unmatched /api/* endpoints always return JSON, never HTML
+  app.all('/api/{*path}', (_req: Request, res: Response) => {
+    res.status(404).json({ ok: false, error: 'Endpoint API tidak ditemukan.' });
   });
 
   // ==================== HTTP SERVER + WEBSOCKET SERVER ====================

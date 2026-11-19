@@ -10,6 +10,16 @@ import {
   StudentAnalyticsRow,
 } from './multiplayerClient.ts';
 import { renderTeacherProgressPieChart } from './teacherChart.ts';
+import {
+  fetchMissionConfig,
+  loginStudent,
+  loginTeacher,
+  fetchTeacherAnalytics,
+  saveTeacherMissionConfig,
+  recordLocalStudentProgress,
+  markLocalStudentOffline,
+  exportTeacherCsvReport,
+} from './backendService.ts';
 import { sound } from './soundEngine.ts';
 import { World3D, CostumeType } from './world3d.ts';
 import { downloadCertificateAsImage, printCertificate, CertificateInfo } from './certificateGenerator.ts';
@@ -116,22 +126,16 @@ class GameApp {
     this.updateHUD();
     void this.fetchInitialMissionConfig();
 
+    window.addEventListener('beforeunload', () => {
+      markLocalStudentOffline(this.studentId);
+    });
+
     // Start main 3D animation loop
     this.tick();
   }
 
   private async fetchInitialMissionConfig() {
-    try {
-      const res = await fetch('/api/mission-config');
-      if (res.ok) {
-        const data = await res.json();
-        if (data?.missionConfig) {
-          this.missionConfig = data.missionConfig;
-        }
-      }
-    } catch {
-      // fallback to defaults
-    }
+    this.missionConfig = await fetchMissionConfig();
   }
 
   private loadState(): GameState {
@@ -473,18 +477,13 @@ class GameApp {
       if (submitBtn) submitBtn.disabled = true;
 
       try {
-        const res = await fetch('/api/auth/student', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, institution, grade, season, costume }),
-        });
-        const data = await res.json();
-        if (!res.ok || !data.ok) {
-          throw new Error(data.error || 'Gagal masuk sebagai murid.');
+        const result = await loginStudent({ name, institution, grade, season, costume });
+        if (!result.ok) {
+          throw new Error(result.error);
         }
 
-        const srvStudent = data.student as StudentAnalyticsRow;
-        if (data.missionConfig) this.missionConfig = data.missionConfig;
+        const srvStudent = result.student;
+        this.missionConfig = result.missionConfig;
 
         this.role = 'student';
         this.studentId = srvStudent.id;
@@ -508,15 +507,22 @@ class GameApp {
         this.world.returnToCampusLobby();
         this.updateHUD();
 
-        // Connect WebSocket for real-time multiplayer + live telemetry
-        this.multiplayer.connect({
-          role: 'student',
-          studentId: this.studentId,
-          costume: this.state.costume,
-          stageId: 0,
-          x: this.world.playerGroup.position.x,
-          z: this.world.playerGroup.position.z,
-        });
+        // Connect WebSocket (or BroadcastChannel fallback if running on static preview)
+        this.multiplayer.connect(
+          {
+            role: 'student',
+            studentId: this.studentId,
+            name: this.state.playerName,
+            institution: this.state.institution,
+            grade: this.state.grade,
+            level: this.state.level,
+            costume: this.state.costume,
+            stageId: 0,
+            x: this.world.playerGroup.position.x,
+            z: this.world.playerGroup.position.z,
+          },
+          result.source === 'local'
+        );
 
         document.getElementById('modal-start')?.classList.add('hidden');
         document.getElementById('modal-teacher-dashboard')?.classList.add('hidden');
@@ -527,7 +533,7 @@ class GameApp {
         this.showToast(`Selamat datang ${this.state.playerName}! Data progresmu terekam real-time.`, 'success');
       } catch (err) {
         if (studentError) {
-          studentError.textContent = err instanceof Error ? err.message : 'Gagal terhubung ke server.';
+          studentError.textContent = err instanceof Error ? err.message : 'Gagal masuk sebagai murid.';
           studentError.classList.remove('hidden');
         }
       } finally {
@@ -550,23 +556,18 @@ class GameApp {
       if (submitBtn) submitBtn.disabled = true;
 
       try {
-        const res = await fetch('/api/auth/teacher', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password }),
-        });
-        const data = await res.json();
-        if (!res.ok || !data.ok) {
-          throw new Error(data.error || 'Username atau Password Guru tidak sesuai.');
+        const result = await loginTeacher(username, password);
+        if (!result.ok) {
+          throw new Error(result.error);
         }
 
         this.role = 'teacher';
         this.studentId = null;
-        this.latestAnalytics = data.analytics as TeacherAnalyticsPayload;
+        this.latestAnalytics = result.analytics;
         this.missionConfig = this.latestAnalytics.missionConfig;
 
-        // Connect WebSocket as teacher for live analytics + 3D live spectator
-        this.multiplayer.connect({ role: 'teacher' });
+        // Connect WebSocket (or BroadcastChannel fallback if running on static preview)
+        this.multiplayer.connect({ role: 'teacher' }, result.source === 'local');
 
         document.getElementById('modal-start')?.classList.add('hidden');
         document.getElementById('in-game-hud')?.classList.add('hidden');
@@ -590,6 +591,7 @@ class GameApp {
   private logoutToLoginScreen() {
     sound.playButtonClick();
     this.stopTTS();
+    markLocalStudentOffline(this.studentId);
     if (this.world.inFlightMode) {
       this.world.exitFlightChallenge();
       document.getElementById('modal-battle')?.classList.add('hidden');
@@ -637,34 +639,21 @@ class GameApp {
 
       const statusEl = document.getElementById('mission-config-status');
       try {
-        const res = await fetch('/api/teacher/mission-config', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ questionCounts, durationPerQuestionSec }),
-        });
-        const data = await res.json();
-        if (res.ok && data.ok) {
-          this.missionConfig = data.missionConfig;
-          sound.playDing();
-          if (statusEl) {
-            statusEl.textContent = `✓ Tersimpan & diterapkan real-time (${durationPerQuestionSec} dtk/soal)`;
-          }
-          this.showToast('Pengaturan Misi AKM berhasil diterapkan ke semua murid!', 'success');
+        this.missionConfig = await saveTeacherMissionConfig(questionCounts, durationPerQuestionSec);
+        sound.playDing();
+        if (statusEl) {
+          statusEl.textContent = `✓ Tersimpan & diterapkan real-time (${this.missionConfig.durationPerQuestionSec} dtk/soal)`;
         }
+        this.showToast('Pengaturan Misi AKM berhasil diterapkan ke semua murid!', 'success');
       } catch {
         if (statusEl) statusEl.textContent = 'Gagal menyimpan pengaturan misi.';
       }
     });
 
-    // Export CSV Analysis Report (via download link — no window.open)
+    // Export CSV Analysis Report (server CSV or client-side Blob fallback)
     document.getElementById('btn-teacher-export-csv')?.addEventListener('click', () => {
       sound.playButtonClick();
-      const link = document.createElement('a');
-      link.href = `/api/teacher/export-csv?t=${Date.now()}`;
-      link.download = `Analisis_AKM_PAI_Beji_${new Date().toISOString().slice(0, 10)}.csv`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      void exportTeacherCsvReport(this.latestAnalytics);
       this.showToast('Mengunduh laporan analisis tugas murid (.CSV)...', 'success');
     });
 
@@ -721,20 +710,10 @@ class GameApp {
       this.renderTeacherDashboard(this.latestAnalytics);
     }
 
-    // Also pull fresh analytics over HTTP
-    try {
-      const res = await fetch('/api/teacher/analytics');
-      if (res.ok) {
-        const data = await res.json();
-        if (data?.analytics) {
-          this.latestAnalytics = data.analytics;
-          this.missionConfig = data.analytics.missionConfig;
-          this.renderTeacherDashboard(data.analytics);
-        }
-      }
-    } catch {
-      // live WS will keep updating
-    }
+    const fresh = await fetchTeacherAnalytics();
+    this.latestAnalytics = fresh;
+    this.missionConfig = fresh.missionConfig;
+    this.renderTeacherDashboard(fresh);
   }
 
   private syncMissionConfigInputs() {
@@ -1334,18 +1313,14 @@ class GameApp {
 
   private syncStudentProgressHttp() {
     if (!this.studentId) return;
-    void fetch('/api/student/progress', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        studentId: this.studentId,
-        xp: this.state.xp,
-        level: this.state.level,
-        coins: this.state.coins,
-        badges: this.state.badges,
-        costume: this.state.costume,
-      }),
-    }).catch(() => {});
+    recordLocalStudentProgress({
+      studentId: this.studentId,
+      xp: this.state.xp,
+      level: this.state.level,
+      coins: this.state.coins,
+      badges: this.state.badges,
+      costume: this.state.costume,
+    });
   }
 
   // ==================== NURA VOICE ASSISTANT ====================
@@ -1864,6 +1839,17 @@ class GameApp {
         level: this.state.level,
         coins: this.state.coins,
       });
+      recordLocalStudentProgress({
+        studentId: this.studentId,
+        stageId: this.currentStageId,
+        difficulty: q.difficulty,
+        correct: isCorrect,
+        currentScore,
+        xp: this.state.xp,
+        level: this.state.level,
+        coins: this.state.coins,
+        badges: this.state.badges,
+      });
     }
 
     this.renderFlightHudState();
@@ -1911,6 +1897,16 @@ class GameApp {
         xp: this.state.xp,
         level: this.state.level,
         coins: this.state.coins,
+      });
+      recordLocalStudentProgress({
+        studentId: this.studentId,
+        stageId: this.currentStageId,
+        stageCompleted: true,
+        stageScore: finalScore,
+        xp: this.state.xp,
+        level: this.state.level,
+        coins: this.state.coins,
+        badges: this.state.badges,
       });
     }
 
