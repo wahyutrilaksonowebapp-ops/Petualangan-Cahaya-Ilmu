@@ -1,0 +1,1408 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Petualangan Cahaya Ilmu: SDN Kedungringin I Beji</title>
+  <meta name="description" content="Game edukasi 3D WebGL PAI & BP SD (CP 020/2026) SDN Kedungringin I Beji dengan 5 Dunia, Nura Companion, pertarungan kuis bos, pohon skill, dan sertifikat kelulusan." />
+  <meta property="og:title" content="Petualangan Cahaya Ilmu: SDN Kedungringin I Beji" />
+  <meta property="og:description" content="Game edukasi 3D WebGL PAI & BP SD (CP 020/2026) SDN Kedungringin I Beji dengan 5 Dunia, Nura Companion, pertarungan kuis bos, pohon skill, dan sertifikat kelulusan." />
+  <meta property="og:type" content="website" />
+  <meta name="twitter:card" content="summary_large_image" />
+
+  <!-- Google Fonts & Font Awesome CDN -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Cinzel:wght@600;700;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            arabic: ['"Amiri"', 'serif'],
+            regal: ['"Cinzel"', 'serif'],
+          },
+          colors: {
+            gold: {
+              300: '#fde047',
+              400: '#facc15',
+              500: '#eab308',
+              600: '#ca8a04',
+            },
+            emerald: {
+              400: '#34d399',
+              500: '#10b981',
+              600: '#059669',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Three.js & Confetti CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+
+  <style>
+    * {
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      box-sizing: border-box;
+    }
+    body, html {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #030712;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    #game-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      display: block;
+    }
+    /* Scrollbars custom */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.6);
+      border-radius: 999px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(234, 179, 8, 0.5);
+      border-radius: 999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(234, 179, 8, 0.8);
+    }
+    .text-shadow-gold {
+      text-shadow: 0 0 15px rgba(234, 179, 8, 0.6), 0 2px 4px rgba(0,0,0,0.8);
+    }
+    .text-shadow-glow {
+      text-shadow: 0 0 12px rgba(56, 189, 248, 0.7);
+    }
+    .box-glow-gold {
+      box-shadow: 0 0 25px rgba(234, 179, 8, 0.25), inset 0 0 15px rgba(234, 179, 8, 0.15);
+    }
+    .box-glow-emerald {
+      box-shadow: 0 0 25px rgba(16, 185, 129, 0.25), inset 0 0 15px rgba(16, 185, 129, 0.15);
+    }
+    /* Custom animations */
+    @keyframes floatSlow {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-8px); }
+    }
+    .animate-float-slow {
+      animation: floatSlow 3.5s ease-in-out infinite;
+    }
+    @keyframes spinRune {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    .animate-spin-slow {
+      animation: spinRune 16s linear infinite;
+    }
+  </style>
+</head>
+<body class="text-white bg-slate-950 overflow-hidden select-none">
+
+  <!-- 3D WebGL Canvas -->
+  <canvas id="game-canvas"></canvas>
+
+  <!-- ==================== UI OVERLAY CONTAINER ==================== -->
+  <div id="ui-layer" class="absolute inset-0 z-10 pointer-events-none flex flex-col justify-between">
+
+    <!-- TOP HUD (In-Game) -->
+    <header id="in-game-hud" class="hidden pointer-events-auto p-2.5 sm:p-4 flex items-start justify-between gap-2 sm:gap-3 w-full max-w-7xl mx-auto">
+      <!-- Player Profile & XP Bar -->
+      <div class="flex items-center gap-2.5 sm:gap-3 bg-slate-900/90 border border-amber-500/30 rounded-2xl p-2 sm:px-4 sm:py-2.5 backdrop-blur-md shadow-xl">
+        <div id="hud-avatar-icon" class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-tr from-amber-600 to-yellow-400 flex items-center justify-center text-slate-950 text-lg sm:text-xl font-bold shadow-md">
+          <i class="fa-solid fa-graduation-cap"></i>
+        </div>
+        <div class="flex flex-col">
+          <div class="flex items-center gap-2">
+            <span id="hud-player-name" class="font-bold text-white text-sm sm:text-base leading-none">Ahmad</span>
+            <span id="hud-level-badge" class="px-2 py-0.5 rounded-full text-xs font-extrabold bg-amber-500/20 border border-amber-400/40 text-amber-300">Lv. 1</span>
+          </div>
+          <span id="hud-rank-title" class="text-[11px] text-amber-200/80 font-medium">Santri Pemula</span>
+          <!-- XP Bar -->
+          <div class="w-24 sm:w-36 h-2 bg-slate-800 rounded-full mt-1 overflow-hidden border border-slate-700/60 relative">
+            <div id="hud-xp-fill" class="h-full bg-gradient-to-r from-amber-500 to-yellow-300 transition-all duration-500" style="width: 25%"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Center Institution, Class & Live Online Counter Pill -->
+      <div class="hidden md:flex flex-col items-center bg-slate-900/85 border border-slate-700/60 px-4 py-2 rounded-2xl backdrop-blur-md shadow-lg text-center">
+        <span id="hud-institution-tag" class="text-[10px] uppercase tracking-wider text-amber-400 font-bold flex items-center gap-1.5">
+          <i class="fa-solid fa-school text-xs"></i> SDN KEDUNGRINGIN I BEJI
+        </span>
+        <div class="flex items-center gap-2 mt-0.5">
+          <span id="hud-grade-tag" class="text-xs font-semibold text-white">Kelas 4 (Fase B)</span>
+          <span class="text-slate-500">•</span>
+          <span id="hud-season-tag" class="text-xs font-medium text-emerald-400">Season 1</span>
+          <span class="text-slate-500">•</span>
+          <span id="hud-online-count" class="text-xs font-bold text-sky-300 flex items-center gap-1">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> 1 Online
+          </span>
+        </div>
+      </div>
+
+      <!-- Right Currency, Badges & Live Controls -->
+      <div class="flex items-center gap-1.5 sm:gap-2.5">
+        <!-- Coins -->
+        <div class="flex items-center gap-1.5 sm:gap-2 bg-slate-900/90 border border-yellow-500/30 px-2.5 sm:px-3 py-2 rounded-2xl backdrop-blur-md shadow-lg">
+          <div class="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-amber-500/20 border border-amber-400 flex items-center justify-center text-amber-300 text-xs sm:text-sm">
+            <i class="fa-solid fa-coins"></i>
+          </div>
+          <div class="flex flex-col">
+            <span class="text-[9px] text-slate-400 leading-none">Koin</span>
+            <span id="hud-coins-val" class="font-extrabold text-amber-300 text-xs sm:text-base leading-tight">80</span>
+          </div>
+        </div>
+
+        <!-- 5 Elemental Badges Tracker -->
+        <div class="hidden lg:flex items-center gap-1.5 bg-slate-900/90 border border-slate-700/60 px-3 py-2 rounded-2xl backdrop-blur-md">
+          <span class="text-[10px] text-slate-400 font-semibold mr-1">Lencana:</span>
+          <span id="badge-icon-1" title="Lencana Al-Qur'an & Hadis" class="w-6 h-6 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-xs text-slate-600 transition-all"><i class="fa-solid fa-book-quran"></i></span>
+          <span id="badge-icon-2" title="Lencana Akidah" class="w-6 h-6 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-xs text-slate-600 transition-all"><i class="fa-solid fa-star-and-crescent"></i></span>
+          <span id="badge-icon-3" title="Lencana Akhlak" class="w-6 h-6 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-xs text-slate-600 transition-all"><i class="fa-solid fa-heart"></i></span>
+          <span id="badge-icon-4" title="Lencana Ibadah" class="w-6 h-6 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-xs text-slate-600 transition-all"><i class="fa-solid fa-mosque"></i></span>
+          <span id="badge-icon-5" title="Lencana Tarikh" class="w-6 h-6 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-xs text-slate-600 transition-all"><i class="fa-solid fa-hourglass-half"></i></span>
+        </div>
+
+        <!-- Live Multiplayer Chat Button -->
+        <button id="btn-open-room-chat" class="px-2.5 sm:px-3 py-2 rounded-2xl bg-sky-500/20 border border-sky-400/70 hover:border-sky-300 text-sky-300 text-xs font-bold flex items-center gap-1.5 transition-all shadow-lg active:scale-95" title="Obrolan Real-Time Pemain">
+          <i class="fa-solid fa-comments"></i>
+          <span class="hidden sm:inline">Obrolan</span>
+        </button>
+
+        <!-- Nura Voice Assistant Trigger Button -->
+        <button id="btn-nura-hud" class="px-2.5 sm:px-3 py-2 rounded-2xl bg-gradient-to-r from-amber-500/20 via-yellow-400/20 to-amber-500/20 border border-amber-400/70 hover:border-amber-300 text-amber-300 text-xs font-bold flex items-center gap-1.5 transition-all shadow-lg active:scale-95 group" title="Klik Nura untuk Petunjuk Suara">
+          <div class="w-5 h-5 rounded-full bg-amber-400/30 flex items-center justify-center text-amber-300 text-xs group-hover:rotate-45 transition-transform">
+            <i class="fa-solid fa-wand-magic-sparkles"></i>
+          </div>
+          <span class="hidden sm:inline">Nura</span>
+        </button>
+
+        <!-- Audio Mute Button -->
+        <button id="btn-toggle-sound" class="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-slate-900/90 border border-slate-700/80 hover:border-amber-400 flex items-center justify-center text-slate-300 hover:text-amber-400 transition-colors shadow-lg" title="Suara Musik & Efek">
+          <i id="sound-icon" class="fa-solid fa-volume-high"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- NON-BLOCKING INLINE TOAST NOTIFICATION -->
+    <div id="app-toast" class="hidden pointer-events-none fixed top-20 left-1/2 -translate-x-1/2 z-[70] px-5 py-2.5 rounded-2xl bg-slate-900/95 border border-amber-400/80 text-amber-200 text-xs sm:text-sm font-bold shadow-2xl backdrop-blur-xl transition-all"></div>
+
+    <!-- NURA VOICE ASSISTANT FLOATING SPEECH BUBBLE -->
+    <div id="nura-speech-bubble" class="hidden pointer-events-auto fixed top-20 sm:top-24 left-1/2 transform -translate-x-1/2 z-40 w-11/12 max-w-lg bg-slate-900/95 border-2 border-amber-400 rounded-3xl p-4 shadow-2xl backdrop-blur-xl animate-float-slow box-glow-gold">
+      <div class="flex items-start gap-3">
+        <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 to-yellow-300 flex items-center justify-center text-slate-950 text-xl font-bold flex-shrink-0 shadow-lg border border-amber-200">
+          <i class="fa-solid fa-wand-magic-sparkles"></i>
+        </div>
+        <div class="flex-1 pr-1">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-extrabold uppercase tracking-widest text-amber-300 flex items-center gap-2">
+              <span>Nura Voice Assistant</span>
+              <span id="nura-audio-wave" class="flex gap-0.5 items-end h-3">
+                <span class="w-1 bg-amber-400 rounded-full h-2 animate-bounce"></span>
+                <span class="w-1 bg-amber-300 rounded-full h-3 animate-bounce [animation-delay:0.15s]"></span>
+                <span class="w-1 bg-amber-400 rounded-full h-1.5 animate-bounce [animation-delay:0.3s]"></span>
+              </span>
+            </span>
+            <button id="btn-close-nura-bubble" class="text-slate-400 hover:text-white p-1 rounded-lg">
+              <i class="fa-solid fa-xmark text-sm"></i>
+            </button>
+          </div>
+          <p id="nura-speech-text" class="text-xs sm:text-sm text-slate-100 font-medium mt-1 leading-relaxed">
+            "Halo sahabatku! Sentuh aku kapan saja untuk mendengarkan petunjuk dan bimbingan belajar."
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- STAGE MAP EXPLORATION HUD BAR (Visible when inside Stage 1-5 Map) -->
+    <div id="stage-map-hud" class="hidden pointer-events-auto self-center mt-1 mx-3 bg-slate-950/88 border border-emerald-400/60 px-4 py-2 rounded-2xl backdrop-blur-md shadow-xl flex flex-wrap items-center justify-center gap-2 sm:gap-3 max-w-4xl">
+      <div class="flex items-center gap-2">
+        <span id="stage-map-badge" class="px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/50 text-emerald-300 text-[10px] font-extrabold uppercase tracking-wider">Map Stage 1</span>
+        <span id="stage-map-title" class="text-xs sm:text-sm font-bold text-white">Pintu Awal: Hutan Tajwid, Al-Qur'an, Hadis &amp; Hijaiyah</span>
+      </div>
+      <div class="flex items-center gap-1.5 sm:gap-2">
+        <button id="btn-stage-open-materi" class="px-3 py-1 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/60 text-amber-300 text-xs font-bold flex items-center gap-1.5 transition-all">
+          <i class="fa-solid fa-book-open"></i> <span>Materi</span>
+        </button>
+        <button id="btn-stage-start-boss" class="px-3 py-1 rounded-xl bg-gradient-to-r from-sky-400 via-amber-400 to-yellow-400 text-slate-950 text-xs font-extrabold flex items-center gap-1.5 shadow-md hover:scale-105 active:scale-95 transition-transform">
+          <i class="fa-solid fa-plane-up"></i> <span>Rintangan Pemahaman</span>
+        </button>
+        <button id="btn-return-campus" class="px-3 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 text-xs font-bold flex items-center gap-1.5 transition-all">
+          <i class="fa-solid fa-school"></i> <span>Kampus</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- FLOATING INTERACTION PROMPTS -->
+    <!-- 1. Portal Entrance Prompt (Campus Lobby) -->
+    <div id="proximity-prompt" class="hidden pointer-events-auto self-center mb-4 bg-gradient-to-r from-slate-950/95 via-slate-900/95 to-slate-950/95 border-2 border-amber-400 px-6 py-3.5 rounded-full backdrop-blur-xl shadow-2xl flex items-center gap-3 animate-bounce">
+      <div class="w-8 h-8 rounded-full bg-amber-400 text-slate-950 flex items-center justify-center font-bold text-sm shadow-md">
+        <i class="fa-solid fa-sparkles"></i>
+      </div>
+      <div>
+        <p id="prompt-stage-name" class="font-bold text-amber-300 text-sm sm:text-base leading-tight">Stage 1: Alam Al-Qur'an &amp; Hadis</p>
+        <p class="text-xs text-slate-300">Tekan <kbd class="px-1.5 py-0.5 bg-slate-800 border border-slate-600 rounded text-amber-400 font-mono font-bold">E</kbd> atau Sentuh Tombol Masuk Map</p>
+      </div>
+      <button id="btn-enter-stage-prompt" class="ml-2 px-4 py-1.5 rounded-full bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-extrabold text-xs tracking-wide uppercase hover:scale-105 active:scale-95 transition-transform shadow-md">
+        Masuk Map <i class="fa-solid fa-arrow-right ml-1"></i>
+      </button>
+    </div>
+
+    <!-- 1B. Biome Gate Prompt (Inside Stage Map) -->
+    <div id="prompt-biome-gate" class="hidden pointer-events-auto self-center mb-4 bg-gradient-to-r from-emerald-950/95 via-slate-900/95 to-emerald-950/95 border-2 border-emerald-400 px-6 py-3.5 rounded-full backdrop-blur-xl shadow-2xl flex items-center gap-3 animate-bounce">
+      <div class="w-8 h-8 rounded-full bg-emerald-400 text-slate-950 flex items-center justify-center font-bold text-sm shadow-md">
+        <i class="fa-solid fa-tree"></i>
+      </div>
+      <div>
+        <p id="prompt-biome-name" class="font-bold text-emerald-300 text-sm sm:text-base leading-tight">Hutan Tajwid</p>
+        <p id="prompt-biome-sub" class="text-xs text-slate-300">Tekan E atau Buka Gerbang Ilmu</p>
+      </div>
+      <button id="btn-enter-biome-gate" class="ml-2 px-4 py-1.5 rounded-full bg-gradient-to-r from-emerald-400 to-teal-300 text-slate-950 font-extrabold text-xs tracking-wide uppercase hover:scale-105 active:scale-95 transition-transform shadow-md">
+        Buka <i class="fa-solid fa-arrow-right ml-1"></i>
+      </button>
+    </div>
+
+    <!-- 2. Real-Time Multiplayer Player Prompt: "Ngobrol yuk!" -->
+    <div id="prompt-chat-student" class="hidden pointer-events-auto self-center mb-4 bg-gradient-to-r from-sky-950/95 via-slate-900/95 to-sky-950/95 border-2 border-sky-400 px-5 py-3 rounded-full backdrop-blur-xl shadow-2xl flex items-center gap-3 animate-pulse">
+      <div class="w-8 h-8 rounded-full bg-sky-400 text-slate-950 flex items-center justify-center font-bold text-sm shadow-md">
+        <i class="fa-solid fa-comments"></i>
+      </div>
+      <div>
+        <p id="prompt-student-name" class="font-bold text-sky-300 text-sm leading-tight">Pemain Online</p>
+        <p class="text-xs text-slate-300">Pemain lain bergabung di tautan ini!</p>
+      </div>
+      <button id="btn-trigger-chat" class="ml-2 px-4 py-1.5 rounded-full bg-gradient-to-r from-sky-400 to-blue-500 text-white font-extrabold text-xs tracking-wide uppercase hover:scale-105 active:scale-95 transition-transform shadow-md flex items-center gap-1.5">
+        <i class="fa-solid fa-comment-dots"></i> Ngobrol yuk!
+      </button>
+    </div>
+
+    <!-- TEACHER SPECTATOR HUD BAR (Visible when Teacher watches live 3D students) -->
+    <div id="teacher-spectator-bar" class="hidden pointer-events-auto fixed top-4 left-1/2 transform -translate-x-1/2 z-40 bg-slate-950/95 border-2 border-emerald-400 px-4 sm:px-5 py-2.5 rounded-2xl backdrop-blur-xl shadow-2xl flex flex-wrap items-center justify-center gap-2.5">
+      <div class="flex items-center gap-2 text-emerald-400 font-bold text-xs uppercase tracking-wider">
+        <i class="fa-solid fa-chalkboard-user text-base"></i>
+        <span>Mode Pengamat Guru (3D Live):</span>
+      </div>
+      <select id="select-spectate-student" class="bg-slate-900 border border-emerald-400/60 rounded-xl px-3 py-1 text-xs text-white font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-400">
+        <option value="">Menunggu murid online...</option>
+      </select>
+      <button id="btn-open-teacher-dashboard-from-bar" class="px-3 py-1 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs flex items-center gap-1.5 transition-colors">
+        <i class="fa-solid fa-chart-pie"></i> Dashboard Analisis
+      </button>
+      <button id="btn-exit-spectator" class="px-3 py-1 rounded-xl bg-red-600/85 hover:bg-red-500 text-white font-bold text-xs flex items-center gap-1 transition-colors">
+        <i class="fa-solid fa-right-from-bracket"></i> Keluar
+      </button>
+    </div>
+
+    <!-- BOTTOM DOCK & VIRTUAL CONTROLS -->
+    <footer id="in-game-bottom" class="hidden pointer-events-none p-3 sm:p-5 flex flex-col items-center gap-3 w-full">
+      <!-- Mobile Touch Controls (Left Joystick, Right Action Button) -->
+      <div id="touch-controls" class="w-full flex justify-between items-end pointer-events-none px-2 sm:px-6 mb-1 md:hidden">
+        <div id="joystick-zone" class="pointer-events-auto w-28 h-28 rounded-full bg-slate-900/60 border border-slate-700/60 flex items-center justify-center relative touch-none backdrop-blur-sm">
+          <div id="joystick-knob" class="w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-yellow-600 shadow-lg transform translate-x-0 translate-y-0 transition-transform duration-75 flex items-center justify-center text-slate-950 text-xs">
+            <i class="fa-solid fa-arrows-up-down-left-right"></i>
+          </div>
+        </div>
+        <button id="btn-touch-action" class="pointer-events-auto w-20 h-20 rounded-full bg-gradient-to-tr from-amber-500 to-yellow-400 border-2 border-white/40 text-slate-950 flex flex-col items-center justify-center shadow-2xl active:scale-90 transition-transform">
+          <i class="fa-solid fa-hand-sparkles text-xl"></i>
+          <span class="text-[10px] font-extrabold tracking-wider mt-0.5 uppercase">AKSI</span>
+        </button>
+      </div>
+
+      <!-- Compact Bottom Glass Dock -->
+      <div class="pointer-events-auto bg-slate-950/85 border border-slate-700/60 px-3 py-2 rounded-2xl backdrop-blur-md shadow-2xl flex items-center gap-1.5 sm:gap-2.5 flex-wrap justify-center">
+        <button id="btn-open-shop" class="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/30 to-yellow-500/30 border border-yellow-400 hover:border-yellow-300 text-yellow-300 text-xs font-bold flex items-center gap-1.5 transition-all shadow-md active:scale-95">
+          <i class="fa-solid fa-shop text-amber-400"></i>
+          <span>Toko Baju</span>
+        </button>
+
+        <button id="btn-open-skilltree" class="px-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-700 hover:border-amber-400/60 text-slate-200 hover:text-amber-300 text-xs font-semibold flex items-center gap-1.5 transition-all">
+          <i class="fa-solid fa-tree text-amber-400"></i>
+          <span class="hidden sm:inline">Pohon</span> Skill
+        </button>
+
+        <button id="btn-open-badges" class="px-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-700 hover:border-amber-400/60 text-slate-200 hover:text-amber-300 text-xs font-semibold flex items-center gap-1.5 transition-all">
+          <i class="fa-solid fa-award text-yellow-400"></i>
+          <span class="hidden sm:inline">Koleksi</span> Lencana
+        </button>
+
+        <button id="btn-open-certificate" class="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/20 to-yellow-500/20 border border-amber-400/50 hover:border-amber-400 text-amber-300 text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm">
+          <i class="fa-solid fa-certificate text-amber-400"></i>
+          Sertifikat
+        </button>
+
+        <button id="btn-reset-character" class="px-2.5 py-1.5 rounded-xl bg-slate-900/90 border border-slate-700 hover:border-red-400 text-slate-300 hover:text-red-300 text-xs font-semibold flex items-center gap-1.5 transition-all" title="Ganti Akun / Keluar">
+          <i class="fa-solid fa-right-from-bracket"></i>
+          <span class="hidden sm:inline">Ganti Akun</span>
+        </button>
+      </div>
+
+      <!-- Desktop Control Hint Line -->
+      <p class="hidden md:block text-[11px] text-slate-400 font-mono tracking-wider">
+        <span class="text-amber-400 font-semibold">WASD / Panah:</span> Gerak &nbsp;•&nbsp;
+        <span class="text-amber-400 font-semibold">Shift:</span> Lari &nbsp;•&nbsp;
+        <span class="text-amber-400 font-semibold">Spasi / E:</span> Interaksi Gerbang &nbsp;•&nbsp;
+        <span class="text-sky-400 font-semibold">Dekati Pemain Lain:</span> Ngobrol Real-Time
+      </p>
+    </footer>
+
+  </div>
+
+  <!-- ==================== MODAL: DUAL LOGIN (AKUN MURID & AKUN GURU) ==================== -->
+  <div id="modal-start" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md overflow-y-auto">
+    <div class="relative w-full max-w-xl bg-gradient-to-b from-slate-900 via-slate-900/95 to-slate-950 border border-amber-500/40 rounded-3xl p-6 sm:p-8 shadow-2xl box-glow-gold my-auto">
+
+      <!-- School Crest / Header -->
+      <div class="text-center mb-5">
+        <div class="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-amber-500/10 border border-amber-400/30 text-amber-300 text-xs font-bold tracking-widest uppercase mb-2.5">
+          <i class="fa-solid fa-mosque"></i> PAI &amp; BP SD • CP 020/2026 • MULTIPLAYER
+        </div>
+        <h1 class="text-2xl sm:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-yellow-400 to-amber-500 text-shadow-gold tracking-tight">
+          PETUALANGAN CAHAYA ILMU
+        </h1>
+        <p class="text-sm font-semibold text-slate-300 mt-1 flex items-center justify-center gap-1.5">
+          <i class="fa-solid fa-location-dot text-amber-400 text-xs"></i> SDN KEDUNGRINGIN I BEJI
+        </p>
+      </div>
+
+      <!-- 2-Option Account Switcher (Akun Murid vs Akun Guru) -->
+      <div class="grid grid-cols-2 gap-2 p-1.5 rounded-2xl bg-slate-950/90 border border-slate-800 mb-5">
+        <button type="button" id="tab-login-student" class="py-2.5 px-3 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md transition-all">
+          <i class="fa-solid fa-user-graduate"></i>
+          <span>Akun Murid</span>
+        </button>
+        <button type="button" id="tab-login-teacher" class="py-2.5 px-3 rounded-xl bg-transparent text-slate-300 hover:text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all">
+          <i class="fa-solid fa-chalkboard-user"></i>
+          <span>Akun Guru</span>
+        </button>
+      </div>
+
+      <!-- PANEL 1: AKUN MURID -->
+      <form id="form-start-game" class="space-y-3.5">
+        <div id="student-login-error" class="hidden p-2.5 rounded-xl bg-red-950/70 border border-red-500/60 text-red-200 text-xs font-semibold"></div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-amber-300 mb-1" for="input-player-name">
+              <i class="fa-solid fa-user mr-1"></i> Nama Murid
+            </label>
+            <input type="text" id="input-player-name" required maxlength="35" placeholder="Contoh: Ahmad Fauzan"
+              class="w-full bg-slate-950/80 border border-slate-700 focus:border-amber-400 rounded-xl px-3.5 py-2.5 text-white font-medium text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/20 transition-all placeholder-slate-500" />
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-amber-300 mb-1" for="input-institution">
+              <i class="fa-solid fa-school mr-1"></i> Nama Lembaga
+            </label>
+            <input type="text" id="input-institution" required maxlength="50" placeholder="Contoh: SDN Kedungringin I Beji"
+              class="w-full bg-slate-950/80 border border-slate-700 focus:border-amber-400 rounded-xl px-3.5 py-2.5 text-white font-medium text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/20 transition-all placeholder-slate-500" value="SDN Kedungringin I Beji" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-amber-300 mb-1" for="select-grade">
+              <i class="fa-solid fa-graduation-cap mr-1"></i> Tingkat Kelas
+            </label>
+            <select id="select-grade" class="w-full bg-slate-950/80 border border-slate-700 focus:border-amber-400 rounded-xl px-3 py-2.5 text-white font-medium text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/20 transition-all">
+              <option value="1">Kelas 1 (Fase A)</option>
+              <option value="2">Kelas 2 (Fase A)</option>
+              <option value="3">Kelas 3 (Fase B)</option>
+              <option value="4">Kelas 4 (Fase B)</option>
+              <option value="5">Kelas 5 (Fase C)</option>
+              <option value="6" selected>Kelas 6 (Fase C)</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-amber-300 mb-1" for="select-season">
+              <i class="fa-solid fa-calendar mr-1"></i> Season / Semester
+            </label>
+            <select id="select-season" class="w-full bg-slate-950/80 border border-slate-700 focus:border-amber-400 rounded-xl px-3 py-2.5 text-white font-medium text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/20 transition-all">
+              <option value="1" selected>Season 1 (Semester 1)</option>
+              <option value="2">Season 2 (Semester 2)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Costume Selection -->
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-amber-300 mb-1">
+            <i class="fa-solid fa-shirt mr-1"></i> Busana Karakter 3D
+          </label>
+          <div class="grid grid-cols-3 gap-2">
+            <label class="relative cursor-pointer">
+              <input type="radio" name="costume-radio" value="sd" class="peer sr-only" checked />
+              <div class="p-2 rounded-xl border border-slate-700 peer-checked:border-amber-400 peer-checked:bg-amber-500/10 bg-slate-950/60 text-center transition-all">
+                <div class="w-7 h-7 mx-auto rounded-full bg-red-600 flex items-center justify-center text-white text-[11px] mb-1 font-bold">SD</div>
+                <span class="block text-xs font-semibold text-slate-200 leading-tight">Merah Putih</span>
+              </div>
+            </label>
+            <label class="relative cursor-pointer">
+              <input type="radio" name="costume-radio" value="muslim" class="peer sr-only" />
+              <div class="p-2 rounded-xl border border-slate-700 peer-checked:border-amber-400 peer-checked:bg-amber-500/10 bg-slate-950/60 text-center transition-all">
+                <div class="w-7 h-7 mx-auto rounded-full bg-emerald-600 flex items-center justify-center text-white text-[11px] mb-1 font-bold"><i class="fa-solid fa-star-and-crescent"></i></div>
+                <span class="block text-xs font-semibold text-slate-200 leading-tight">Busana Muslim</span>
+              </div>
+            </label>
+            <label class="relative cursor-pointer">
+              <input type="radio" name="costume-radio" value="pramuka" class="peer sr-only" />
+              <div class="p-2 rounded-xl border border-slate-700 peer-checked:border-amber-400 peer-checked:bg-amber-500/10 bg-slate-950/60 text-center transition-all">
+                <div class="w-7 h-7 mx-auto rounded-full bg-amber-800 flex items-center justify-center text-white text-[11px] mb-1 font-bold"><i class="fa-solid fa-campground"></i></div>
+                <span class="block text-xs font-semibold text-slate-200 leading-tight">Pramuka</span>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <p class="text-[11px] text-slate-400 text-center">
+          <i class="fa-solid fa-satellite-dish text-emerald-400 mr-1"></i> Progres dan capaian AKM terekam secara real-time bersama pemain lain dalam 1 tautan.
+        </p>
+
+        <button type="submit" id="btn-student-login-submit" class="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-slate-950 font-black text-sm sm:text-base uppercase tracking-wider shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+          <span>Masuk Sebagai Murid</span>
+          <i class="fa-solid fa-play text-xs"></i>
+        </button>
+      </form>
+
+      <!-- PANEL 2: AKUN GURU -->
+      <form id="form-teacher-login" class="hidden space-y-4">
+        <div class="p-3.5 rounded-2xl bg-emerald-950/40 border border-emerald-500/40 text-xs text-emerald-200 leading-relaxed flex items-start gap-3">
+          <div class="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-300 flex items-center justify-center flex-shrink-0 text-base">
+            <i class="fa-solid fa-shield-halved"></i>
+          </div>
+          <div>
+            <p class="font-bold text-emerald-300">Portal Guru &amp; Administrator Misi AKM</p>
+            <p class="text-slate-300 mt-0.5">Pantau kemampuan murid real-time dengan diagram distribusi 5 dunia, atur jumlah soal (10–15 soal per elemen), pantau 3D, dan unduh analisis tugas CSV.</p>
+          </div>
+        </div>
+
+        <div id="teacher-login-error" class="hidden p-2.5 rounded-xl bg-red-950/70 border border-red-500/60 text-red-200 text-xs font-semibold"></div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-emerald-300 mb-1.5" for="input-teacher-username">
+            <i class="fa-solid fa-id-badge mr-1"></i> Username Guru
+          </label>
+          <input type="text" id="input-teacher-username" required autocomplete="username" placeholder="Masukkan Username Guru"
+            class="w-full bg-slate-950/80 border border-slate-700 focus:border-emerald-400 rounded-xl px-4 py-2.5 text-white font-medium text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/20 transition-all placeholder-slate-500" />
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-emerald-300 mb-1.5" for="input-teacher-password">
+            <i class="fa-solid fa-lock mr-1"></i> Password Guru
+          </label>
+          <input type="password" id="input-teacher-password" required autocomplete="current-password" placeholder="Masukkan Password Guru"
+            class="w-full bg-slate-950/80 border border-slate-700 focus:border-emerald-400 rounded-xl px-4 py-2.5 text-white font-medium text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/20 transition-all placeholder-slate-500" />
+        </div>
+
+        <button type="submit" id="btn-teacher-login-submit" class="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-500 text-slate-950 font-black text-sm sm:text-base uppercase tracking-wider shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+          <i class="fa-solid fa-chalkboard-user"></i>
+          <span>Masuk Dashboard Guru</span>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL: MATERI INTERAKTIF & AUDIO TTS ==================== -->
+  <div id="modal-materi" class="hidden fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/85 backdrop-blur-md overflow-y-auto">
+    <div class="relative w-full max-w-2xl bg-slate-900 border-2 border-amber-500/50 rounded-3xl p-5 sm:p-7 shadow-2xl my-auto max-h-[90vh] flex flex-col">
+      
+      <!-- Modal Header -->
+      <div class="flex items-start justify-between gap-3 border-b border-slate-800 pb-4">
+        <div class="flex items-center gap-3">
+          <div id="materi-header-icon" class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-600 to-yellow-400 flex items-center justify-center text-slate-950 text-2xl shadow-md">
+            <i class="fa-solid fa-book-quran"></i>
+          </div>
+          <div>
+            <span id="materi-element-tag" class="text-[11px] font-extrabold uppercase tracking-widest text-amber-400">Elemen Al-Qur'an dan Hadis</span>
+            <h2 id="materi-title" class="text-xl sm:text-2xl font-extrabold text-white leading-tight">Hutan Tajwid: Makharijul Huruf</h2>
+          </div>
+        </div>
+        <button id="btn-close-materi" class="text-slate-400 hover:text-white p-2 rounded-xl hover:bg-slate-800 transition-colors">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body (Scrollable) -->
+      <div class="overflow-y-auto py-4 space-y-4 pr-1 text-slate-200 text-sm leading-relaxed">
+        
+        <!-- Forest / Biome Gate Context Banner (shown when entering via Hutan Tajwid/Al-Qur'an/Hadis/Hijaiyah) -->
+        <div id="materi-forest-banner" class="hidden bg-gradient-to-r from-emerald-950/70 via-teal-950/60 to-emerald-950/70 border border-emerald-400/50 rounded-2xl p-3.5 flex items-start gap-3">
+          <div class="w-9 h-9 rounded-xl bg-emerald-400/20 text-emerald-300 flex items-center justify-center flex-shrink-0 text-base">
+            <i class="fa-solid fa-mountain-sun"></i>
+          </div>
+          <div>
+            <h4 id="materi-forest-title" class="text-xs font-extrabold uppercase tracking-wider text-emerald-300">Hutan Tajwid</h4>
+            <p id="materi-forest-desc" class="text-xs text-slate-200 mt-0.5">Menikmati keindahan alam sambil mempelajari ayat suci dan hadis Nabi.</p>
+          </div>
+        </div>
+
+        <!-- Audio Narator Controls (Web Speech API) -->
+        <div class="bg-slate-950/80 border border-amber-500/30 rounded-2xl p-3 flex flex-wrap items-center justify-between gap-2.5">
+          <div class="flex items-center gap-2 text-xs font-semibold text-amber-300">
+            <i class="fa-solid fa-headphones-simple text-sm"></i>
+            <span>Suara Narator Belajar (Text-to-Speech)</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="btn-tts-play" class="px-3 py-1.5 rounded-xl bg-amber-500 text-slate-950 font-bold text-xs flex items-center gap-1.5 hover:bg-amber-400 transition-colors">
+              <i class="fa-solid fa-volume-high"></i> <span>Dengarkan</span>
+            </button>
+            <button id="btn-tts-stop" class="px-3 py-1.5 rounded-xl bg-slate-800 text-slate-300 hover:text-white font-bold text-xs flex items-center gap-1.5 transition-colors">
+              <i class="fa-solid fa-stop"></i> <span>Hentikan</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Ayat / Hadis / Doa Card -->
+        <div id="materi-dalil-card" class="bg-gradient-to-r from-amber-950/30 via-slate-950 to-amber-950/30 border border-amber-500/30 rounded-2xl p-4 text-center">
+          <p id="materi-arabic-text" class="font-arabic text-2xl sm:text-3xl text-amber-300 leading-loose" dir="rtl">
+            بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ
+          </p>
+          <p id="materi-translation-text" class="text-xs sm:text-sm text-slate-300 mt-2 italic font-serif">
+            "Dengan menyebut nama Allah Yang Maha Pengasih lagi Maha Penyayang."
+          </p>
+        </div>
+
+        <!-- Penjelasan Materi Pokok -->
+        <div class="bg-slate-950/60 border border-slate-800 rounded-2xl p-4 space-y-2.5">
+          <h3 class="text-xs font-extrabold uppercase tracking-wider text-amber-400 flex items-center gap-2">
+            <i class="fa-solid fa-lightbulb"></i> Ringkasan Materi Pelajaran
+          </h3>
+          <p id="materi-description" class="text-slate-300 text-xs sm:text-sm">
+            Memuat penjelasan materi pelajaran...
+          </p>
+          <ul id="materi-bullet-points" class="space-y-1.5 text-xs sm:text-sm text-slate-300 list-disc list-inside">
+            <!-- Points dynamically injected -->
+          </ul>
+        </div>
+
+        <!-- Nura Companion Advice -->
+        <div class="bg-emerald-950/30 border border-emerald-500/30 rounded-2xl p-3 flex items-start gap-3">
+          <div class="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center flex-shrink-0 text-sm mt-0.5">
+            <i class="fa-solid fa-wand-magic-sparkles"></i>
+          </div>
+          <div>
+            <h4 class="text-xs font-bold text-emerald-300">Petunjuk Nura:</h4>
+            <p id="materi-nura-hint" class="text-xs text-slate-300 mt-0.5">
+              Pahami materi di atas dengan baik sebelum melangkah ke ujian kuis bos penjaga gerbang!
+            </p>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="border-t border-slate-800 pt-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <button id="btn-cancel-materi" class="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-colors">
+          Kembali Jelajahi Map
+        </button>
+        <button id="btn-start-quiz-battle" class="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-sky-400 via-amber-400 to-yellow-400 text-slate-950 font-extrabold text-xs tracking-wider uppercase shadow-lg hover:scale-105 active:scale-95 transition-transform flex items-center justify-center gap-2">
+          <i class="fa-solid fa-plane-up"></i>
+          <span>Mulai Rintangan Pemahaman (Pesawat 3D)</span>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ==================== RINTANGAN PEMAHAMAN: 3D AIRPLANE CHALLENGE (SPLIT SCREEN) ==================== -->
+  <div id="modal-battle" class="hidden fixed inset-0 z-40 pointer-events-none flex flex-col justify-between">
+
+    <!-- Top HUD: Stage Info, Difficulty, Flight Approach Timer, Hearts & Lifelines -->
+    <header class="pointer-events-auto w-full p-2 sm:p-3.5 flex flex-col items-center">
+      <div class="w-full max-w-5xl bg-slate-950/88 border border-sky-400/50 rounded-2xl sm:rounded-3xl p-2.5 sm:p-3.5 backdrop-blur-md shadow-2xl flex flex-col gap-2">
+
+        <div class="flex items-center justify-between gap-2 flex-wrap">
+          <!-- Left: Flight Mission Identity -->
+          <div class="flex items-center gap-2.5">
+            <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-sky-500 via-blue-500 to-amber-400 flex items-center justify-center text-slate-950 text-base sm:text-lg shadow-lg flex-shrink-0">
+              <i class="fa-solid fa-plane-up"></i>
+            </div>
+            <div>
+              <div class="flex items-center gap-2 flex-wrap">
+                <span id="battle-stage-badge" class="text-[10px] font-extrabold uppercase tracking-wider text-sky-300">Stage 1 • Al-Qur'an &amp; Hadis</span>
+                <span id="battle-difficulty-badge" class="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-400/40">AKM Sedang</span>
+              </div>
+              <h3 id="battle-boss-name" class="text-xs sm:text-sm font-extrabold text-white leading-tight">Rintangan Pemahaman • Pesawat 3D</h3>
+            </div>
+          </div>
+
+          <!-- Right: Lifelines, Hearts, Combo, Exit -->
+          <div class="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+            <button id="skill-5050" class="px-2.5 py-1 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-amber-500/40 text-amber-300 text-[11px] font-bold flex items-center gap-1 transition-all disabled:opacity-40 disabled:cursor-not-allowed" title="Firasat Tajwid: Hapus 2 kotak salah">
+              <i class="fa-solid fa-scissors"></i> <span>50:50</span>
+            </button>
+            <button id="skill-shield" class="px-2.5 py-1 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-emerald-500/40 text-emerald-300 text-[11px] font-bold flex items-center gap-1 transition-all disabled:opacity-40 disabled:cursor-not-allowed" title="Perisai Sabar: Lindungi 1 kesalahan">
+              <i class="fa-solid fa-shield"></i> <span>Perisai</span>
+            </button>
+            <button id="skill-hint" class="px-2.5 py-1 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-sky-500/40 text-sky-300 text-[11px] font-bold flex items-center gap-1 transition-all" title="Petunjuk Nura">
+              <i class="fa-solid fa-wand-magic-sparkles"></i> <span>Hint</span>
+            </button>
+
+            <div class="flex items-center gap-2 pl-2 border-l border-slate-800">
+              <div id="battle-hearts-container" class="flex items-center gap-0.5 text-red-500 text-sm">
+                <i class="fa-solid fa-heart"></i><i class="fa-solid fa-heart"></i><i class="fa-solid fa-heart"></i>
+              </div>
+              <span id="battle-combo-badge" class="text-[10px] font-bold text-amber-300 bg-amber-400/10 px-2 py-0.5 rounded-lg border border-amber-400/30">0x</span>
+            </div>
+
+            <button id="btn-exit-flight" class="px-2.5 py-1 rounded-xl bg-slate-800 hover:bg-red-600/80 text-slate-300 hover:text-white text-[11px] font-bold transition-colors" title="Keluar dari Rintangan">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Flight Approach Progress Bar & Boost Trigger -->
+        <div class="flex items-center gap-2.5">
+          <div class="flex-1">
+            <div class="flex justify-between text-[10px] font-bold text-slate-300 mb-0.5">
+              <span><i class="fa-solid fa-gauge-high text-sky-400 mr-1"></i> Pesawat mendekati kotak jawaban otomatis (Panah / Mouse / Sentuh)</span>
+              <span id="flight-timer-text" class="text-amber-300 font-mono">25.0 dtk</span>
+            </div>
+            <div class="w-full h-2.5 bg-slate-900 rounded-full overflow-hidden border border-slate-700/80">
+              <div id="flight-timer-bar" class="h-full bg-gradient-to-r from-emerald-400 via-sky-400 to-amber-400 transition-all duration-100" style="width: 100%"></div>
+            </div>
+          </div>
+          <button id="btn-flight-boost" class="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-extrabold text-[11px] uppercase tracking-wide hover:scale-105 active:scale-95 transition-transform shadow-md flex-shrink-0">
+            <i class="fa-solid fa-jet-fighter-up mr-1"></i> Pilih Jalur Ini
+          </button>
+        </div>
+
+      </div>
+    </header>
+
+    <!-- Center Space: UNOBSTRUCTED 3D FLYING AIRPLANE & 4 APPROACHING ANSWER BOXES + Subtle Edge Touch Pads -->
+    <div class="flex-1 pointer-events-none relative flex items-end justify-between px-3 pb-2">
+      <button id="btn-steer-left" class="pointer-events-auto w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-slate-950/65 hover:bg-slate-900/90 border border-sky-400/60 text-sky-300 text-lg flex items-center justify-center backdrop-blur-sm active:scale-90 transition-transform shadow-lg" title="Belok Kiri (Panah Kiri)">
+        <i class="fa-solid fa-chevron-left"></i>
+      </button>
+      <div id="flight-lane-indicator" class="px-3.5 py-1 rounded-full bg-slate-950/80 border border-amber-400/60 text-amber-300 text-xs font-extrabold backdrop-blur-md shadow-lg">
+        Jalur Aktif Pesawat: B
+      </div>
+      <button id="btn-steer-right" class="pointer-events-auto w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-slate-950/65 hover:bg-slate-900/90 border border-sky-400/60 text-sky-300 text-lg flex items-center justify-center backdrop-blur-sm active:scale-90 transition-transform shadow-lg" title="Belok Kanan (Panah Kanan)">
+        <i class="fa-solid fa-chevron-right"></i>
+      </button>
+    </div>
+
+    <!-- Bottom Dock: AKM Stimulus, Question, 4 Lane-Synced Option Cards, and Feedback -->
+    <div class="pointer-events-auto w-full max-w-5xl mx-auto p-2 sm:p-3.5 flex flex-col items-center">
+      <div class="w-full bg-slate-950/95 border-2 border-amber-400/80 rounded-3xl p-3 sm:p-4 shadow-2xl backdrop-blur-xl flex flex-col gap-2 max-h-[44vh] overflow-y-auto">
+
+        <div class="flex items-center justify-between text-[10px] sm:text-xs flex-wrap gap-1">
+          <span id="quiz-question-number" class="font-extrabold uppercase tracking-widest text-amber-400 flex items-center gap-1.5">
+            <i class="fa-solid fa-plane"></i> Soal 1 dari 10 • Asesmen Kompetensi Minimum (AKM)
+          </span>
+          <span id="flight-score-live" class="text-emerald-300 font-bold text-[11px]">Benar: 0 / 0</span>
+        </div>
+
+        <!-- AKM Stimulus Box -->
+        <div id="quiz-stimulus-card" class="hidden p-2 rounded-xl bg-amber-950/40 border border-amber-500/30 text-amber-100 text-xs leading-relaxed max-h-20 overflow-y-auto">
+          <div class="flex items-center gap-1.5 mb-0.5 font-bold text-amber-300 text-[10px] uppercase tracking-wider">
+            <i class="fa-solid fa-book-open"></i>
+            <span>Stimulus Literasi AKM</span>
+          </div>
+          <p id="quiz-stimulus-text" class="text-slate-200"></p>
+        </div>
+
+        <!-- Question Prompt -->
+        <p id="quiz-question-text" class="text-xs sm:text-sm md:text-base font-bold text-white leading-snug">
+          Pertanyaan AKM akan dimuat di sini...
+        </p>
+
+        <!-- Dynamic Hint Callout -->
+        <div id="quiz-hint-box" class="hidden p-2 rounded-xl bg-sky-950/60 border border-sky-400/50 text-xs text-sky-200 flex items-start gap-2">
+          <i class="fa-solid fa-lightbulb text-amber-400 mt-0.5"></i>
+          <span id="quiz-hint-text">Bisikan petunjuk dari Nura...</span>
+        </div>
+
+        <!-- Answer Options (4 Cards synced to Airplane Lanes A, B, C, D) -->
+        <div id="quiz-options-container" class="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2">
+          <!-- Dynamically generated -->
+        </div>
+
+        <!-- Feedback / Result Banner -->
+        <div id="quiz-feedback-banner" class="hidden p-2.5 sm:p-3 rounded-2xl text-xs font-semibold flex items-center justify-between gap-3">
+          <div class="flex items-center gap-2">
+            <div id="quiz-feedback-icon" class="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-300 flex items-center justify-center flex-shrink-0 text-xs">
+              <i class="fa-solid fa-check"></i>
+            </div>
+            <span id="quiz-feedback-text">Tepat sasaran!</span>
+          </div>
+          <button id="btn-next-question" class="px-4 py-1.5 rounded-xl bg-white text-slate-950 font-extrabold text-xs uppercase tracking-wide hover:bg-slate-200 transition-colors flex-shrink-0 shadow-md">
+            Soal Berikutnya <i class="fa-solid fa-arrow-right ml-1"></i>
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ==================== MODAL: VICTORY STAGE CELEBRATION ==================== -->
+  <div id="modal-victory" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-lg">
+    <div class="relative w-full max-w-md bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 border-2 border-amber-400 rounded-3xl p-6 sm:p-8 text-center shadow-2xl box-glow-gold my-auto animate-float-slow">
+      
+      <div class="w-20 h-20 mx-auto rounded-3xl bg-gradient-to-tr from-amber-500 to-yellow-300 flex items-center justify-center text-slate-950 text-4xl shadow-xl mb-4">
+        <i id="victory-badge-icon" class="fa-solid fa-award"></i>
+      </div>
+
+      <span class="text-xs font-bold uppercase tracking-widest text-amber-400">Alhamdulillah!</span>
+      <h2 class="text-2xl font-black text-white mt-1">Gerbang Ilmu Tuntas!</h2>
+      <p id="victory-stage-title" class="text-sm text-slate-300 mt-1 font-semibold">Stage 1: Hutan Tajwid Selesai</p>
+
+      <!-- Reward Badges Summary -->
+      <div class="my-5 p-4 rounded-2xl bg-slate-950/80 border border-amber-500/30 space-y-3">
+        <div class="flex items-center justify-between text-xs">
+          <span class="text-slate-400">Lencana Diperoleh:</span>
+          <span id="victory-badge-name" class="font-bold text-amber-300 flex items-center gap-1.5">
+            <i class="fa-solid fa-star text-amber-400"></i> Bintang Tajwid
+          </span>
+        </div>
+        <div class="flex items-center justify-between text-xs">
+          <span class="text-slate-400">Hadiah XP Cahaya:</span>
+          <span id="victory-xp-gained" class="font-extrabold text-emerald-400">+100 XP</span>
+        </div>
+        <div class="flex items-center justify-between text-xs">
+          <span class="text-slate-400">Hadiah Koin Berkah:</span>
+          <span id="victory-coins-gained" class="font-extrabold text-amber-400">+50 Koin</span>
+        </div>
+      </div>
+
+      <div class="space-y-2">
+        <button id="btn-victory-continue" class="w-full py-3 rounded-2xl bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-extrabold text-sm uppercase tracking-wider shadow-lg hover:scale-105 active:scale-95 transition-transform">
+          Lanjut Menjelajah Sekolah
+        </button>
+        <button id="btn-victory-view-cert" class="w-full py-2.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-amber-300 text-xs font-bold transition-colors">
+          Lihat Sertifikat Prestasi
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ==================== MODAL: POHON SKILL (SKILL TREE) ==================== -->
+  <div id="modal-skilltree" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md overflow-y-auto">
+    <div class="relative w-full max-w-xl bg-slate-900 border border-amber-500/40 rounded-3xl p-6 sm:p-7 shadow-2xl my-auto">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-400 flex items-center justify-center text-amber-300 text-lg">
+            <i class="fa-solid fa-tree"></i>
+          </div>
+          <div>
+            <h3 class="text-lg font-bold text-white">Pohon Keahlian Cahaya Ilmu</h3>
+            <p class="text-xs text-slate-400">Buka kemampuan pasif dengan Koin Berkah</p>
+          </div>
+        </div>
+        <button id="btn-close-skilltree" class="text-slate-400 hover:text-white p-1.5 rounded-xl hover:bg-slate-800 transition-colors">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <!-- Skill Cards List -->
+      <div class="space-y-3">
+        <!-- Skill 1: Firasat Tajwid -->
+        <div class="p-3.5 rounded-2xl bg-slate-950/70 border border-slate-800 flex items-center justify-between gap-3">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center text-lg flex-shrink-0">
+              <i class="fa-solid fa-scissors"></i>
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <h4 class="font-bold text-white text-sm">Firasat Tajwid</h4>
+                <span id="skill-tag-5050" class="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 font-bold">Terkunci</span>
+              </div>
+              <p class="text-xs text-slate-400 mt-0.5">Membuka bantuan 50:50 (menghapus 2 opsi salah) di setiap kuis.</p>
+            </div>
+          </div>
+          <button id="btn-buy-skill-5050" class="px-3 py-1.5 rounded-xl bg-amber-500 text-slate-950 font-extrabold text-xs whitespace-nowrap hover:bg-amber-400 transition-colors">
+            100 Koin
+          </button>
+        </div>
+
+        <!-- Skill 2: Perisai Sabar -->
+        <div class="p-3.5 rounded-2xl bg-slate-950/70 border border-slate-800 flex items-center justify-between gap-3">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-lg flex-shrink-0">
+              <i class="fa-solid fa-shield-heart"></i>
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <h4 class="font-bold text-white text-sm">Perisai Sabar</h4>
+                <span id="skill-tag-shield" class="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 font-bold">Terkunci</span>
+              </div>
+              <p class="text-xs text-slate-400 mt-0.5">Mencegah kehilangan Hati saat salah menjawab 1 kali per stage.</p>
+            </div>
+          </div>
+          <button id="btn-buy-skill-shield" class="px-3 py-1.5 rounded-xl bg-amber-500 text-slate-950 font-extrabold text-xs whitespace-nowrap hover:bg-amber-400 transition-colors">
+            150 Koin
+          </button>
+        </div>
+
+        <!-- Skill 3: Berkah Ganda -->
+        <div class="p-3.5 rounded-2xl bg-slate-950/70 border border-slate-800 flex items-center justify-between gap-3">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-sky-500/20 text-sky-400 flex items-center justify-center text-lg flex-shrink-0">
+              <i class="fa-solid fa-bolt"></i>
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <h4 class="font-bold text-white text-sm">Berkah Ganda</h4>
+                <span id="skill-tag-double" class="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 font-bold">Terkunci</span>
+              </div>
+              <p class="text-xs text-slate-400 mt-0.5">Menggandakan XP saat menjawab benar 3 kali berturut-turut.</p>
+            </div>
+          </div>
+          <button id="btn-buy-skill-double" class="px-3 py-1.5 rounded-xl bg-amber-500 text-slate-950 font-extrabold text-xs whitespace-nowrap hover:bg-amber-400 transition-colors">
+            200 Koin
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL: KOLEKSI LENCANA & KARTU TELADAN ==================== -->
+  <div id="modal-badges" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md overflow-y-auto">
+    <div class="relative w-full max-w-2xl bg-slate-900 border border-amber-500/40 rounded-3xl p-6 sm:p-7 shadow-2xl my-auto">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+        <div>
+          <h3 class="text-lg font-bold text-white">Galeri Lencana & Kartu Teladan</h3>
+          <p class="text-xs text-slate-400">Lencana kehormatan 5 pilar pendidikan agama Islam</p>
+        </div>
+        <button id="btn-close-badges" class="text-slate-400 hover:text-white p-1.5 rounded-xl hover:bg-slate-800 transition-colors">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" id="badges-cards-grid">
+        <!-- 5 Lore Cards dynamically updated -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL: SERTIFIKAT KETUNTASAN (PDF & PRINT READY) ==================== -->
+  <div id="modal-certificate" class="hidden fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/90 backdrop-blur-lg overflow-y-auto">
+    <div class="relative w-full max-w-4xl bg-slate-900 border-2 border-amber-400 rounded-3xl p-5 sm:p-7 shadow-2xl my-auto flex flex-col">
+      
+      <!-- Top Action Bar -->
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-certificate text-amber-400 text-xl"></i>
+          <span class="text-sm font-bold text-white">Sertifikat Kelulusan Resmi PAI & BP</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="btn-download-cert-img" class="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 transition-colors shadow-md">
+            <i class="fa-solid fa-download"></i> Unduh File Sertifikat (HD)
+          </button>
+          <button id="btn-print-cert" class="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs flex items-center gap-1.5 transition-colors">
+            <i class="fa-solid fa-print"></i> Cetak / PDF
+          </button>
+          <button id="btn-close-cert" class="text-slate-400 hover:text-white p-1.5 rounded-xl hover:bg-slate-800 transition-colors ml-2">
+            <i class="fa-solid fa-xmark text-lg"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Printable Certificate Layout -->
+      <div id="certificate-printable-area" class="bg-gradient-to-br from-amber-50 via-white to-amber-50 text-slate-900 p-6 sm:p-10 rounded-2xl border-8 border-double border-amber-700 relative overflow-hidden shadow-2xl font-serif">
+        
+        <!-- Ornaments Corner -->
+        <div class="absolute top-2 left-2 text-amber-700/30 text-3xl font-arabic">۞</div>
+        <div class="absolute top-2 right-2 text-amber-700/30 text-3xl font-arabic">۞</div>
+        <div class="absolute bottom-2 left-2 text-amber-700/30 text-3xl font-arabic">۞</div>
+        <div class="absolute bottom-2 right-2 text-amber-700/30 text-3xl font-arabic">۞</div>
+
+        <!-- Watermark -->
+        <div class="absolute inset-0 flex items-center justify-center opacity-5 pointer-events-none">
+          <i class="fa-solid fa-mosque text-9xl"></i>
+        </div>
+
+        <div class="relative z-10 text-center">
+          <!-- Institutional Header -->
+          <div class="text-[11px] font-sans font-bold tracking-widest text-slate-600 uppercase">
+            Pemerintah Kabupaten Pasuruan • Dinas Pendidikan
+          </div>
+          <h2 class="text-base sm:text-lg font-bold font-sans text-amber-900 uppercase tracking-wider mt-0.5">
+            SDN KEDUNGRINGIN I BEJI
+          </h2>
+          <p class="text-[10px] text-slate-500 font-sans">
+            Jl. Raya Kedungringin, Beji, Kabupaten Pasuruan, Jawa Timur
+          </p>
+
+          <hr class="border-t-2 border-amber-800/40 my-3 w-3/4 mx-auto" />
+
+          <!-- Certificate Title -->
+          <h1 class="text-xl sm:text-3xl font-bold font-serif text-amber-950 uppercase tracking-wide text-shadow-gold mt-1">
+            SERTIFIKAT KETUNTASAN
+          </h1>
+          <p class="text-xs font-sans font-semibold tracking-wider text-amber-800 uppercase mt-0.5">
+            Pendidikan Agama Islam dan Budi Pekerti (CP 020/2026)
+          </p>
+
+          <p class="text-xs text-slate-600 italic mt-3 font-serif">
+            Dengan penuh rasa syukur, menerangkan bahwa:
+          </p>
+
+          <!-- Student Name -->
+          <h3 id="cert-student-name" class="text-2xl sm:text-3xl font-bold text-amber-900 font-serif my-2 underline decoration-amber-500 decoration-2 underline-offset-8">
+            Ahmad Santri
+          </h3>
+
+          <!-- Details (Class, Season, Title) -->
+          <p class="text-xs sm:text-sm text-slate-700 max-w-lg mx-auto leading-relaxed font-sans">
+            Telah menyelesaikan seluruh misi eksplorasi 5 Gerbang Ilmu, Ujian Kuis Penjaga Gerbang, dan meraih predikat <strong id="cert-rank-title" class="text-amber-900">Santri Pemula</strong> pada <strong id="cert-grade-season">Kelas 4 (Fase B) • Season 1 (Semester 1)</strong> dengan akumulasi <strong id="cert-total-xp">100 XP Cahaya</strong>.
+          </p>
+
+          <!-- 5 Earned Badges Visual Row -->
+          <div class="my-5 flex items-center justify-center gap-2 sm:gap-4 flex-wrap">
+            <div class="flex flex-col items-center">
+              <div id="cert-badge-1" class="w-10 h-10 rounded-full border-2 border-amber-600 bg-amber-100 flex items-center justify-center text-amber-800 text-sm shadow-sm"><i class="fa-solid fa-book-quran"></i></div>
+              <span class="text-[9px] font-sans font-semibold text-slate-600 mt-1">Hutan Tajwid</span>
+            </div>
+            <div class="flex flex-col items-center">
+              <div id="cert-badge-2" class="w-10 h-10 rounded-full border-2 border-amber-600 bg-amber-100 flex items-center justify-center text-amber-800 text-sm shadow-sm"><i class="fa-solid fa-star-and-crescent"></i></div>
+              <span class="text-[9px] font-sans font-semibold text-slate-600 mt-1">Keyakinan</span>
+            </div>
+            <div class="flex flex-col items-center">
+              <div id="cert-badge-3" class="w-10 h-10 rounded-full border-2 border-amber-600 bg-amber-100 flex items-center justify-center text-amber-800 text-sm shadow-sm"><i class="fa-solid fa-heart"></i></div>
+              <span class="text-[9px] font-sans font-semibold text-slate-600 mt-1">Budi Pekerti</span>
+            </div>
+            <div class="flex flex-col items-center">
+              <div id="cert-badge-4" class="w-10 h-10 rounded-full border-2 border-amber-600 bg-amber-100 flex items-center justify-center text-amber-800 text-sm shadow-sm"><i class="fa-solid fa-mosque"></i></div>
+              <span class="text-[9px] font-sans font-semibold text-slate-600 mt-1">Ibadah</span>
+            </div>
+            <div class="flex flex-col items-center">
+              <div id="cert-badge-5" class="w-10 h-10 rounded-full border-2 border-amber-600 bg-amber-100 flex items-center justify-center text-amber-800 text-sm shadow-sm"><i class="fa-solid fa-hourglass-half"></i></div>
+              <span class="text-[9px] font-sans font-semibold text-slate-600 mt-1">Lorong Waktu</span>
+            </div>
+          </div>
+
+          <!-- Signatures Section -->
+          <div class="grid grid-cols-2 gap-4 mt-6 pt-3 border-t border-amber-800/20 text-xs font-sans text-slate-700">
+            <div>
+              <p class="text-[10px] text-slate-500">Guru Pendidikan Agama Islam,</p>
+              <div class="h-10 flex items-center justify-center italic text-amber-900 font-serif font-bold text-sm">
+                Ust. Pembina PAI & BP
+              </div>
+              <p class="font-bold border-t border-slate-400 w-36 mx-auto pt-0.5">NIP. 19850412 201001 1 018</p>
+            </div>
+            <div>
+              <p class="text-[10px] text-slate-500">Kepala SDN Kedungringin I Beji,</p>
+              <div class="h-10 flex items-center justify-center italic text-amber-900 font-serif font-bold text-sm">
+                Kepala Sekolah, M.Pd.
+              </div>
+              <p class="font-bold border-t border-slate-400 w-36 mx-auto pt-0.5">NIP. 19780820 200312 2 004</p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ==================== MODAL: TOKO BAJU & ATRIBUT (COSTUME SHOP) ==================== -->
+  <div id="modal-shop" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md overflow-y-auto">
+    <div class="relative w-full max-w-2xl bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 border-2 border-yellow-400 rounded-3xl p-6 shadow-2xl box-glow-gold my-auto">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-500 to-yellow-300 flex items-center justify-center text-slate-950 text-xl font-bold shadow-md">
+            <i class="fa-solid fa-shop"></i>
+          </div>
+          <div>
+            <h3 class="font-extrabold text-white text-base sm:text-lg">Toko Baju & Atribut Santri</h3>
+            <p class="text-xs text-slate-400">Tukarkan Koin Berkah untuk berganti pakaian dan atribut karakter 3D!</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-3">
+          <div class="flex items-center gap-1.5 px-3 py-1 bg-amber-500/20 border border-amber-400/50 rounded-full text-amber-300 font-bold text-xs">
+            <i class="fa-solid fa-coins"></i>
+            <span id="shop-coins-val">50</span>
+          </div>
+          <button id="btn-close-shop" class="text-slate-400 hover:text-white p-1 rounded-lg">
+            <i class="fa-solid fa-xmark text-lg"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Costume Grid -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 max-h-[60vh] overflow-y-auto pr-1">
+        <!-- Item 1: Seragam Merah Putih SD -->
+        <div class="bg-slate-800/80 border border-slate-700 rounded-2xl p-3.5 flex items-center gap-3 hover:border-yellow-400/60 transition-colors">
+          <div class="w-12 h-12 rounded-xl bg-red-600 flex items-center justify-center text-white text-xl shadow-md border-2 border-white">
+            <i class="fa-solid fa-graduation-cap"></i>
+          </div>
+          <div class="flex-1">
+            <h4 class="font-bold text-white text-sm">Merah Putih SD</h4>
+            <p class="text-[11px] text-slate-400">Seragam kebanggaan SDN Kedungringin I Beji.</p>
+            <div class="flex items-center justify-between mt-2">
+              <span class="text-xs font-bold text-emerald-400">Dimiliki (Default)</span>
+              <button data-costume="sd" class="btn-equip-costume px-3 py-1 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs shadow-sm">
+                Pakai
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Item 2: Baju Koko Santri & Peci Hitam -->
+        <div class="bg-slate-800/80 border border-slate-700 rounded-2xl p-3.5 flex items-center gap-3 hover:border-yellow-400/60 transition-colors">
+          <div class="w-12 h-12 rounded-xl bg-slate-900 flex items-center justify-center text-amber-300 text-xl shadow-md border-2 border-amber-400">
+            <i class="fa-solid fa-mosque"></i>
+          </div>
+          <div class="flex-1">
+            <h4 class="font-bold text-white text-sm">Baju Koko Santri</h4>
+            <p class="text-[11px] text-slate-400">Koko putih bersih & kopiah hitam anggun.</p>
+            <div class="flex items-center justify-between mt-2">
+              <span class="text-xs font-bold text-amber-300 flex items-center gap-1"><i class="fa-solid fa-coins"></i> 30 Koin</span>
+              <button data-costume="muslim" data-price="30" class="btn-buy-costume px-3 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-sm">
+                Beli / Pakai
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Item 3: Pramuka Penggalang Lengkap -->
+        <div class="bg-slate-800/80 border border-slate-700 rounded-2xl p-3.5 flex items-center gap-3 hover:border-yellow-400/60 transition-colors">
+          <div class="w-12 h-12 rounded-xl bg-amber-800 flex items-center justify-center text-amber-200 text-xl shadow-md border-2 border-amber-600">
+            <i class="fa-solid fa-compass"></i>
+          </div>
+          <div class="flex-1">
+            <h4 class="font-bold text-white text-sm">Pramuka Penggalang</h4>
+            <p class="text-[11px] text-slate-400">Baju cokelat pandu tunas kelapa & baret gagah.</p>
+            <div class="flex items-center justify-between mt-2">
+              <span class="text-xs font-bold text-amber-300 flex items-center gap-1"><i class="fa-solid fa-coins"></i> 40 Koin</span>
+              <button data-costume="pramuka" data-price="40" class="btn-buy-costume px-3 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-sm">
+                Beli / Pakai
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Item 4: Koko Batik Pesisir Pasuruan -->
+        <div class="bg-slate-800/80 border border-slate-700 rounded-2xl p-3.5 flex items-center gap-3 hover:border-yellow-400/60 transition-colors">
+          <div class="w-12 h-12 rounded-xl bg-sky-700 flex items-center justify-center text-sky-200 text-xl shadow-md border-2 border-sky-400">
+            <i class="fa-solid fa-palette"></i>
+          </div>
+          <div class="flex-1">
+            <h4 class="font-bold text-white text-sm">Koko Batik Pasuruan</h4>
+            <p class="text-[11px] text-slate-400">Koko batik motif bahari biru laut & sarung khas.</p>
+            <div class="flex items-center justify-between mt-2">
+              <span class="text-xs font-bold text-amber-300 flex items-center gap-1"><i class="fa-solid fa-coins"></i> 60 Koin</span>
+              <button data-costume="koko_batik" data-price="60" class="btn-buy-costume px-3 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-sm">
+                Beli / Pakai
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Item 5: Jubah Pendekar Cahaya -->
+        <div class="bg-slate-800/80 border border-slate-700 rounded-2xl p-3.5 flex items-center gap-3 hover:border-yellow-400/60 transition-colors">
+          <div class="w-12 h-12 rounded-xl bg-emerald-800 flex items-center justify-center text-yellow-300 text-xl shadow-md border-2 border-emerald-400">
+            <i class="fa-solid fa-shield-halved"></i>
+          </div>
+          <div class="flex-1">
+            <h4 class="font-bold text-white text-sm">Jubah Pendekar Cahaya</h4>
+            <p class="text-[11px] text-slate-400">Jubah pendekar hijau zamrud & ikat sorban emas.</p>
+            <div class="flex items-center justify-between mt-2">
+              <span class="text-xs font-bold text-amber-300 flex items-center gap-1"><i class="fa-solid fa-coins"></i> 80 Koin</span>
+              <button data-costume="pendekar" data-price="80" class="btn-buy-costume px-3 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-sm">
+                Beli / Pakai
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Item 6: Rompi Tahfidz Kerajaan -->
+        <div class="bg-slate-800/80 border border-slate-700 rounded-2xl p-3.5 flex items-center gap-3 hover:border-yellow-400/60 transition-colors">
+          <div class="w-12 h-12 rounded-xl bg-purple-900 flex items-center justify-center text-purple-200 text-xl shadow-md border-2 border-purple-400">
+            <i class="fa-solid fa-quran"></i>
+          </div>
+          <div class="flex-1">
+            <h4 class="font-bold text-white text-sm">Rompi Tahfidz Ungu</h4>
+            <p class="text-[11px] text-slate-400">Rompi keemasan penghafal Al-Qur'an dan hadis.</p>
+            <div class="flex items-center justify-between mt-2">
+              <span class="text-xs font-bold text-amber-300 flex items-center gap-1"><i class="fa-solid fa-coins"></i> 100 Koin</span>
+              <button data-costume="rompi_tahfidz" data-price="100" class="btn-buy-costume px-3 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-sm">
+                Beli / Pakai
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Item 7: Gamis Sutra Madinah -->
+        <div class="bg-slate-800/80 border border-slate-700 rounded-2xl p-3.5 flex items-center gap-3 hover:border-yellow-400/60 transition-colors">
+          <div class="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center text-amber-900 text-xl shadow-md border-2 border-amber-500">
+            <i class="fa-solid fa-star-and-crescent"></i>
+          </div>
+          <div class="flex-1">
+            <h4 class="font-bold text-white text-sm">Gamis Sutra Madinah</h4>
+            <p class="text-[11px] text-slate-400">Gamis sutra gading berkilau peci emas bersahaja.</p>
+            <div class="flex items-center justify-between mt-2">
+              <span class="text-xs font-bold text-amber-300 flex items-center gap-1"><i class="fa-solid fa-coins"></i> 120 Koin</span>
+              <button data-costume="gamis_madinah" data-price="120" class="btn-buy-costume px-3 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-sm">
+                Beli / Pakai
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL: LIVE MULTIPLAYER CHAT (NGOBROL YUK!) ==================== -->
+  <div id="modal-chat" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+    <div class="relative w-full max-w-lg bg-gradient-to-b from-slate-900 to-slate-950 border-2 border-sky-400 rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col max-h-[85vh]">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-3">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-2xl bg-sky-500 flex items-center justify-center text-white text-lg shadow-md">
+            <i class="fa-solid fa-comments"></i>
+          </div>
+          <div>
+            <h3 id="chat-peer-name" class="font-extrabold text-white text-base">Ruang Obrolan Pemain</h3>
+            <p id="chat-peer-title" class="text-xs text-sky-400">Terhubung real-time dalam 1 tautan</p>
+          </div>
+        </div>
+        <button id="btn-close-chat" class="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <!-- Real-Time Chat Message History -->
+      <div id="chat-messages-list" class="flex-1 overflow-y-auto space-y-2.5 bg-slate-950/75 border border-slate-800 rounded-2xl p-3.5 min-h-[200px] max-h-[300px] text-xs">
+        <p class="text-slate-500 text-center italic py-8">Belum ada pesan. Sapa kawan-kawan yang bergabung di tautan ini!</p>
+      </div>
+
+      <!-- Quick Greetings -->
+      <div class="flex items-center gap-1.5 flex-wrap mt-3">
+        <button type="button" class="btn-quick-reply px-2.5 py-1 rounded-xl bg-slate-800 hover:bg-sky-600 text-white text-[11px] font-medium transition-colors" data-reply="Assalamu'alaikum teman-teman! 👋">
+          Assalamu'alaikum 👋
+        </button>
+        <button type="button" class="btn-quick-reply px-2.5 py-1 rounded-xl bg-slate-800 hover:bg-sky-600 text-white text-[11px] font-medium transition-colors" data-reply="Semangat menyelesaikan Rintangan Pemahaman! ✈️">
+          Semangat! ✈️
+        </button>
+        <button type="button" class="btn-quick-reply px-2.5 py-1 rounded-xl bg-slate-800 hover:bg-sky-600 text-white text-[11px] font-medium transition-colors" data-reply="Jazakallah khair kawan! 🤲">
+          Jazakallah! 🤲
+        </button>
+      </div>
+
+      <!-- Live Input Form -->
+      <form id="form-chat-send" class="flex items-center gap-2 mt-3 pt-3 border-t border-slate-800">
+        <input type="text" id="input-chat-message" maxlength="240" placeholder="Tulis pesan untuk pemain lain..."
+          class="flex-1 bg-slate-950 border border-slate-700 focus:border-sky-400 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-white focus:outline-none" />
+        <button type="submit" class="px-4 py-2 rounded-xl bg-gradient-to-r from-sky-500 to-blue-500 hover:from-sky-400 hover:to-blue-400 text-white font-bold text-xs flex items-center gap-1.5 shadow-md">
+          <i class="fa-solid fa-paper-plane"></i> Kirim
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL: TEACHER MODE DASHBOARD (REAL-TIME ANALYTICS + RECHARTS + MISSION ADMIN) ==================== -->
+  <div id="modal-teacher-dashboard" class="hidden fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-5 bg-slate-950/90 backdrop-blur-lg overflow-y-auto">
+    <div class="relative w-full max-w-6xl bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 border-2 border-emerald-400/70 rounded-3xl p-4 sm:p-6 shadow-2xl my-auto max-h-[94vh] flex flex-col">
+
+      <!-- Dashboard Header -->
+      <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-4">
+        <div class="flex items-center gap-3">
+          <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-300 flex items-center justify-center text-slate-950 text-xl shadow-lg">
+            <i class="fa-solid fa-chalkboard-user"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2 flex-wrap">
+              <h2 class="text-lg sm:text-xl font-black text-white">Mode Guru • Dashboard Analisis Real-Time</h2>
+              <span id="teacher-ws-status" class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/20 border border-emerald-400/50 text-emerald-300 flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> LIVE SYNC
+              </span>
+            </div>
+            <p class="text-xs text-slate-400">Akun Administrator: <strong class="text-amber-300">GPAIBEJI</strong> • Evaluasi AKM (10% Mudah • 60% Sedang • 30% Sulit)</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2 flex-wrap">
+          <button id="btn-teacher-export-csv" class="px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-slate-950 font-extrabold text-xs flex items-center gap-1.5 shadow-md transition-transform active:scale-95">
+            <i class="fa-solid fa-file-csv"></i> Unduh Analisis (.CSV)
+          </button>
+          <button id="btn-teacher-watch-3d" class="px-3.5 py-2 rounded-xl bg-sky-600/90 hover:bg-sky-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md transition-colors">
+            <i class="fa-solid fa-eye"></i> Pantau 3D Live
+          </button>
+          <button id="btn-teacher-logout" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-red-600/80 text-slate-200 hover:text-white font-bold text-xs flex items-center gap-1.5 transition-colors">
+            <i class="fa-solid fa-right-from-bracket"></i> Keluar
+          </button>
+        </div>
+      </div>
+
+      <!-- Scrollable Dashboard Body -->
+      <div class="overflow-y-auto py-4 space-y-5 pr-1">
+
+        <!-- 1. SUMMARY STATISTICS CARDS -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div class="bg-slate-950/80 border border-slate-800 rounded-2xl p-3.5">
+            <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Murid Terekam</p>
+            <p id="stat-total-students" class="text-2xl sm:text-3xl font-black text-white mt-1">0</p>
+            <p class="text-[11px] text-slate-400 mt-0.5">Tersimpan real-time</p>
+          </div>
+          <div class="bg-slate-950/80 border border-emerald-500/30 rounded-2xl p-3.5">
+            <p class="text-[11px] font-bold uppercase tracking-wider text-emerald-400">Murid Online Sekarang</p>
+            <p id="stat-online-students" class="text-2xl sm:text-3xl font-black text-emerald-300 mt-1">0</p>
+            <p class="text-[11px] text-slate-400 mt-0.5">Aktif di tautan ini</p>
+          </div>
+          <div class="bg-slate-950/80 border border-amber-500/30 rounded-2xl p-3.5">
+            <p class="text-[11px] font-bold uppercase tracking-wider text-amber-400">Rata-Rata Akurasi AKM</p>
+            <p id="stat-avg-accuracy" class="text-2xl sm:text-3xl font-black text-amber-300 mt-1">0%</p>
+            <p id="stat-total-answered" class="text-[11px] text-slate-400 mt-0.5">0 soal terjawab</p>
+          </div>
+          <div class="bg-slate-950/80 border border-sky-500/30 rounded-2xl p-3.5">
+            <p class="text-[11px] font-bold uppercase tracking-wider text-sky-400">Lencana 5 Dunia Tuntas</p>
+            <p id="stat-total-badges" class="text-2xl sm:text-3xl font-black text-sky-300 mt-1">0</p>
+            <p class="text-[11px] text-slate-400 mt-0.5">Akumulasi seluruh murid</p>
+          </div>
+        </div>
+
+        <!-- 2. RECHARTS PIE CHART + MISSION ADMINISTRATOR CONFIG -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+
+          <!-- Left (7 cols): Recharts Pie Chart & Difficulty Breakdown -->
+          <div class="lg:col-span-7 bg-slate-950/80 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between">
+            <div class="flex items-center justify-between gap-2 mb-2">
+              <div>
+                <h3 class="text-sm font-extrabold text-white flex items-center gap-2">
+                  <i class="fa-solid fa-chart-pie text-amber-400"></i>
+                  Distribusi Progres Murid di 5 Dunia
+                </h3>
+                <p class="text-[11px] text-slate-400">Visualisasi Recharts real-time capaian ketuntasan per elemen PAI &amp; BP</p>
+              </div>
+            </div>
+
+            <!-- Recharts Pie Chart Mount Point -->
+            <div id="teacher-recharts-pie-mount" class="w-full min-h-[250px] flex items-center justify-center"></div>
+
+            <!-- AKM Difficulty Aggregate Bar -->
+            <div class="grid grid-cols-3 gap-2 pt-3 mt-2 border-t border-slate-800 text-center">
+              <div class="bg-emerald-950/40 border border-emerald-500/30 rounded-xl p-2">
+                <span class="text-[10px] font-bold text-emerald-300 block">Mudah (10%)</span>
+                <span id="stat-diff-mudah" class="text-sm font-black text-white">0% (0/0)</span>
+              </div>
+              <div class="bg-amber-950/40 border border-amber-500/30 rounded-xl p-2">
+                <span class="text-[10px] font-bold text-amber-300 block">Sedang (60%)</span>
+                <span id="stat-diff-sedang" class="text-sm font-black text-white">0% (0/0)</span>
+              </div>
+              <div class="bg-rose-950/40 border border-rose-500/30 rounded-xl p-2">
+                <span class="text-[10px] font-bold text-rose-300 block">Sulit (30%)</span>
+                <span id="stat-diff-sulit" class="text-sm font-black text-white">0% (0/0)</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right (5 cols): Administrator Misi (10-15 Questions per Element) -->
+          <div class="lg:col-span-5 bg-slate-950/80 border border-emerald-500/30 rounded-2xl p-4 flex flex-col justify-between">
+            <div>
+              <h3 class="text-sm font-extrabold text-white flex items-center gap-2">
+                <i class="fa-solid fa-sliders text-emerald-400"></i>
+                Administrator Misi (10–15 Soal / Elemen)
+              </h3>
+              <p class="text-[11px] text-slate-400 mt-0.5 mb-3">Tentukan jumlah soal AKM tiap elemen &amp; durasi terbang pesawat 3D.</p>
+
+              <div class="space-y-2.5 text-xs">
+                <div class="flex items-center justify-between gap-2 bg-slate-900/90 px-3 py-2 rounded-xl border border-slate-800">
+                  <label for="cfg-stage-1" class="font-semibold text-emerald-300">1. Al-Qur'an &amp; Hadis</label>
+                  <input type="number" id="cfg-stage-1" min="10" max="15" value="10" class="w-16 bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-center font-bold text-white" />
+                </div>
+                <div class="flex items-center justify-between gap-2 bg-slate-900/90 px-3 py-2 rounded-xl border border-slate-800">
+                  <label for="cfg-stage-2" class="font-semibold text-purple-300">2. Akidah (Keyakinan)</label>
+                  <input type="number" id="cfg-stage-2" min="10" max="15" value="10" class="w-16 bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-center font-bold text-white" />
+                </div>
+                <div class="flex items-center justify-between gap-2 bg-slate-900/90 px-3 py-2 rounded-xl border border-slate-800">
+                  <label for="cfg-stage-3" class="font-semibold text-amber-300">3. Akhlak (Budi Pekerti)</label>
+                  <input type="number" id="cfg-stage-3" min="10" max="15" value="10" class="w-16 bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-center font-bold text-white" />
+                </div>
+                <div class="flex items-center justify-between gap-2 bg-slate-900/90 px-3 py-2 rounded-xl border border-slate-800">
+                  <label for="cfg-stage-4" class="font-semibold text-sky-300">4. Fikih (Simulasi Ibadah)</label>
+                  <input type="number" id="cfg-stage-4" min="10" max="15" value="10" class="w-16 bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-center font-bold text-white" />
+                </div>
+                <div class="flex items-center justify-between gap-2 bg-slate-900/90 px-3 py-2 rounded-xl border border-slate-800">
+                  <label for="cfg-stage-5" class="font-semibold text-pink-300">5. Sejarah Peradaban</label>
+                  <input type="number" id="cfg-stage-5" min="10" max="15" value="10" class="w-16 bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-center font-bold text-white" />
+                </div>
+                <div class="flex items-center justify-between gap-2 bg-slate-900/90 px-3 py-2 rounded-xl border border-amber-500/30">
+                  <label for="cfg-duration-sec" class="font-semibold text-amber-200"><i class="fa-solid fa-clock mr-1"></i> Durasi Terbang / Soal (detik)</label>
+                  <input type="number" id="cfg-duration-sec" min="12" max="45" value="25" class="w-16 bg-slate-950 border border-amber-500/50 rounded-lg px-2 py-1 text-center font-bold text-amber-300" />
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-3 pt-3 border-t border-slate-800">
+              <button id="btn-save-mission-config" class="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-extrabold text-xs uppercase tracking-wider shadow-lg transition-transform active:scale-95">
+                <i class="fa-solid fa-floppy-disk mr-1.5"></i> Simpan &amp; Terapkan ke Semua Murid
+              </button>
+              <p id="mission-config-status" class="text-[11px] text-emerald-300 text-center mt-1.5 min-h-[16px]"></p>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- 3. REAL-TIME STUDENT PERFORMANCE DATA TABLE -->
+        <div class="bg-slate-950/80 border border-slate-800 rounded-2xl p-4">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <div>
+              <h3 class="text-sm font-extrabold text-white flex items-center gap-2">
+                <i class="fa-solid fa-table text-sky-400"></i>
+                Tabel Kemampuan &amp; Progres Murid Real-Time (5 Dunia)
+              </h3>
+              <p class="text-[11px] text-slate-400">Otomatis diperbarui setiap kali murid menjawab soal Rintangan Pemahaman</p>
+            </div>
+            <input type="text" id="input-teacher-search" placeholder="Cari nama murid atau lembaga..."
+              class="w-full sm:w-64 bg-slate-900 border border-slate-700 focus:border-emerald-400 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none" />
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr class="border-b border-slate-800 text-[10px] uppercase tracking-wider text-slate-400">
+                  <th class="py-2.5 px-2">Murid &amp; Lembaga</th>
+                  <th class="py-2.5 px-2">Status</th>
+                  <th class="py-2.5 px-2">Kelas</th>
+                  <th class="py-2.5 px-2">Skor 5 Dunia (E1–E5)</th>
+                  <th class="py-2.5 px-2">AKM (M / Sd / Sl)</th>
+                  <th class="py-2.5 px-2">Akurasi &amp; XP</th>
+                  <th class="py-2.5 px-2 text-right">Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="teacher-students-tbody" class="divide-y divide-slate-800/70">
+                <tr>
+                  <td colspan="7" class="py-8 text-center text-slate-500 italic">Memuat data real-time murid...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Hidden Canvas for High-Resolution Certificate Generation -->
+  <canvas id="canvas-export-cert" class="hidden"></canvas>
+
+  <!-- ==================== GAME LOGIC SCRIPT ==================== -->
+  <script type="module" src="/src/index.ts"></script>
+</body>
+</html>
