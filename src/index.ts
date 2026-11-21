@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { CURRICULUM_DATA, StageCurriculum } from './curriculumData.ts';
+import { CURRICULUM_DATA, StageCurriculum, ForestGateMaterial } from './curriculumData.ts';
 import { buildAkmMissionDeck, AkmQuizQuestion, DifficultyLevel } from './akmQuestionBank.ts';
 import {
   MultiplayerClient,
@@ -375,6 +375,10 @@ class GameApp {
   private missionConfig: MissionConfig = structuredClone(DEFAULT_MISSION_CONFIG);
   private latestAnalytics: TeacherAnalyticsPayload | null = null;
   private teacherSearchQuery: string = '';
+
+  // Active Materi Modal Forest Gate & TTS state
+  private activeForestGateId: string | null = null;
+  private activeMateriTtsText: string = '';
 
   // Real-time Multiplayer Chat state
   private chatMessages: LiveChatMessage[] = [];
@@ -1999,11 +2003,14 @@ class GameApp {
     if (gate.id.endsWith('-boss')) {
       this.startFlightChallenge();
     } else {
-      this.openMateriModal(gate.stageId, { name: gate.name, description: gate.description });
+      this.openMateriModal(gate.stageId, { id: gate.id, name: gate.name, description: gate.description });
     }
   }
 
-  private openMateriModal(stageId: number, forestGateContext?: { name: string; description: string }) {
+  private openMateriModal(
+    stageId: number,
+    forestGateContext?: { id?: string; name: string; description: string }
+  ) {
     this.currentStageId = stageId;
     const seasonData = CURRICULUM_DATA[this.state.season];
     const gradeData = seasonData ? seasonData[this.state.grade] : null;
@@ -2011,52 +2018,231 @@ class GameApp {
     if (!stageCurriculum) return;
 
     this.currentStageCurriculum = stageCurriculum;
+    this.stopTTS();
 
+    const requestedGateId =
+      forestGateContext?.id && stageCurriculum.forestGates?.[forestGateContext.id]
+        ? forestGateContext.id
+        : null;
+
+    this.renderMateriView(stageCurriculum, requestedGateId, forestGateContext);
+    document.getElementById('modal-materi')?.classList.remove('hidden');
+  }
+
+  private renderMateriView(
+    stageCurriculum: StageCurriculum,
+    gateId: string | null,
+    fallbackContext?: { id?: string; name: string; description: string }
+  ) {
+    this.activeForestGateId = gateId;
+    const gateData: ForestGateMaterial | null =
+      gateId && stageCurriculum.forestGates ? stageCurriculum.forestGates[gateId] ?? null : null;
+
+    // 1. Render Forest Gate Quick Switcher Tabs if this stage defines per-forest materials
+    const tabsEl = document.getElementById('materi-forest-tabs');
+    if (tabsEl) {
+      const gates = stageCurriculum.forestGates ? Object.values(stageCurriculum.forestGates) : [];
+      if (gates.length > 0) {
+        tabsEl.classList.remove('hidden');
+        tabsEl.innerHTML = '';
+
+        const tabItems: Array<{ id: string | null; label: string; icon: string }> = [
+          { id: null, label: 'Ringkasan Bab', icon: 'fa-book-open' },
+          ...gates.map((g) => ({
+            id: g.id,
+            label: g.gateLabel,
+            icon:
+              g.id === 's1-tajwid'
+                ? 'fa-wave-square'
+                : g.id === 's1-alquran'
+                  ? 'fa-book-quran'
+                  : g.id === 's1-hadis'
+                    ? 'fa-heart'
+                    : 'fa-font',
+          })),
+        ];
+
+        tabItems.forEach((tab) => {
+          const isActive = this.activeForestGateId === tab.id;
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = isActive
+            ? 'px-3 py-1.5 rounded-xl bg-amber-400 text-slate-950 font-extrabold text-[11px] flex items-center gap-1.5 shadow-md transition-colors'
+            : 'px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 font-bold text-[11px] flex items-center gap-1.5 transition-colors';
+          btn.innerHTML = `<i class="fa-solid ${tab.icon}"></i> <span>${escapeHtml(tab.label)}</span>`;
+          btn.addEventListener('click', () => {
+            sound.playButtonClick();
+            this.stopTTS();
+            this.renderMateriView(stageCurriculum, tab.id);
+          });
+          tabsEl.appendChild(btn);
+        });
+      } else {
+        tabsEl.classList.add('hidden');
+        tabsEl.innerHTML = '';
+      }
+    }
+
+    // 2. Context Banner (Forest Gate)
     const forestBanner = document.getElementById('materi-forest-banner');
     const forestTitle = document.getElementById('materi-forest-title');
     const forestDesc = document.getElementById('materi-forest-desc');
     if (forestBanner && forestTitle && forestDesc) {
-      if (forestGateContext) {
-        forestTitle.textContent = forestGateContext.name;
-        forestDesc.textContent = forestGateContext.description;
+      if (gateData) {
+        forestTitle.textContent = `${gateData.gateLabel} • ${stageCurriculum.fase} Kelas ${this.state.grade}`;
+        forestDesc.textContent = gateData.bannerDesc;
+        forestBanner.classList.remove('hidden');
+      } else if (fallbackContext) {
+        forestTitle.textContent = fallbackContext.name;
+        forestDesc.textContent = fallbackContext.description;
         forestBanner.classList.remove('hidden');
       } else {
         forestBanner.classList.add('hidden');
       }
     }
 
+    // 3. Header, Dalil Arabic, Transliteration, Translation, Summary & Bullet Points
     const elemTag = document.getElementById('materi-element-tag');
-    if (elemTag) elemTag.textContent = `Elemen ${stageCurriculum.element} • ${stageCurriculum.fase}`;
+    if (elemTag) {
+      elemTag.textContent = gateData
+        ? `${gateData.gateLabel} • Elemen ${stageCurriculum.element} • ${stageCurriculum.fase} Kelas ${this.state.grade}`
+        : `Elemen ${stageCurriculum.element} • ${stageCurriculum.fase} Kelas ${this.state.grade}`;
+    }
 
     const titleElem = document.getElementById('materi-title');
-    if (titleElem) titleElem.textContent = stageCurriculum.title;
+    if (titleElem) titleElem.textContent = gateData ? gateData.title : stageCurriculum.title;
 
     const arabicElem = document.getElementById('materi-arabic-text');
-    if (arabicElem) arabicElem.textContent = stageCurriculum.arabic;
+    if (arabicElem) arabicElem.textContent = gateData ? gateData.arabic : stageCurriculum.arabic;
+
+    const translitElem = document.getElementById('materi-transliteration-text');
+    if (translitElem) {
+      if (gateData?.transliteration) {
+        translitElem.textContent = gateData.transliteration;
+        translitElem.classList.remove('hidden');
+      } else {
+        translitElem.textContent = '';
+        translitElem.classList.add('hidden');
+      }
+    }
 
     const transElem = document.getElementById('materi-translation-text');
-    if (transElem) transElem.textContent = `"${stageCurriculum.translation}"`;
+    if (transElem) {
+      const tr = gateData ? gateData.translation : stageCurriculum.translation;
+      transElem.textContent = `"${tr}"`;
+    }
 
     const descElem = document.getElementById('materi-description');
-    if (descElem) descElem.textContent = stageCurriculum.description;
+    if (descElem) descElem.textContent = gateData ? gateData.description : stageCurriculum.description;
 
+    const activePoints = gateData ? gateData.points : stageCurriculum.points;
     const bulletList = document.getElementById('materi-bullet-points');
     if (bulletList) {
       bulletList.innerHTML = '';
-      stageCurriculum.points.forEach((pt) => {
+      activePoints.forEach((pt) => {
         const li = document.createElement('li');
         li.textContent = pt;
         bulletList.appendChild(li);
       });
     }
 
-    const configuredCount = this.missionConfig.questionCounts[String(stageId)] ?? 10;
-    const nuraHint = document.getElementById('materi-nura-hint');
-    if (nuraHint) {
-      nuraHint.textContent = `Rintangan Pemahaman pada elemen ini terdiri dari ${configuredCount} soal AKM (10% Mudah, 60% Sedang, 30% Sulit). Kendalikan pesawat 3D menuju kotak jawaban yang tepat!`;
+    // 4. Structured Detail Cards (Gunnah analysis, Surah breakdown, Hadis lessons, Hijaiyah letter chips)
+    const detailSection = document.getElementById('materi-detail-section');
+    const detailHeading = document.getElementById('materi-detail-heading');
+    const detailCardsEl = document.getElementById('materi-detail-cards');
+    if (detailSection && detailCardsEl) {
+      if (gateData?.detailCards && gateData.detailCards.length > 0) {
+        detailSection.classList.remove('hidden');
+        if (detailHeading) {
+          detailHeading.innerHTML = `<i class="fa-solid fa-layer-group"></i> <span>${escapeHtml(
+            gateData.detailHeading || 'Pendalaman Materi'
+          )}</span>`;
+        }
+        detailCardsEl.innerHTML = '';
+        gateData.detailCards.forEach((card) => {
+          const cardEl = document.createElement('div');
+          cardEl.className =
+            'bg-slate-900/90 border border-slate-700/80 rounded-xl p-3 space-y-2';
+
+          let lettersHtml = '';
+          if (card.letters && card.letters.length > 0) {
+            const chips = card.letters
+              .map((ch) => {
+                if (ch === '•') {
+                  return `<span class="px-1 text-slate-500 font-bold select-none">•</span>`;
+                }
+                return `<span class="inline-flex items-center justify-center min-w-[2rem] h-8 px-2 rounded-lg bg-sky-950/90 border border-sky-400/50 text-amber-300 font-arabic text-xl leading-none shadow-sm">${escapeHtml(
+                  ch
+                )}</span>`;
+              })
+              .join('');
+            lettersHtml = `
+              <div class="pt-1">
+                <div class="text-[10px] font-bold uppercase tracking-wider text-sky-300 mb-1.5">Huruf Tunggal Penyusun (Kanan → Kiri):</div>
+                <div dir="rtl" class="flex flex-wrap items-center gap-1.5 bg-slate-950/85 border border-slate-800 rounded-xl p-2">
+                  ${chips}
+                </div>
+              </div>
+            `;
+          }
+
+          cardEl.innerHTML = `
+            <div class="flex flex-wrap items-center justify-between gap-1.5">
+              <span class="px-2 py-0.5 rounded-md bg-amber-500/20 border border-amber-400/40 text-amber-300 text-[10px] font-extrabold uppercase tracking-wider">${escapeHtml(
+                card.badge
+              )}</span>
+              <span class="text-xs font-bold text-white">${escapeHtml(card.title)}</span>
+            </div>
+            ${
+              card.arabic
+                ? `<p dir="rtl" class="font-arabic text-xl sm:text-2xl text-amber-200 leading-loose text-right bg-slate-950/70 rounded-lg px-3 py-1.5 border border-amber-500/20">${escapeHtml(
+                    card.arabic
+                  )}</p>`
+                : ''
+            }
+            ${
+              card.transliteration
+                ? `<p class="text-xs font-semibold text-sky-300"><span class="text-slate-400 font-normal">Transliterasi:</span> ${escapeHtml(
+                    card.transliteration
+                  )}</p>`
+                : ''
+            }
+            ${
+              card.meaning
+                ? `<p class="text-xs italic text-slate-300"><span class="not-italic text-slate-400">Arti:</span> "${escapeHtml(
+                    card.meaning
+                  )}"</p>`
+                : ''
+            }
+            ${lettersHtml}
+            ${
+              card.note
+                ? `<p class="text-[11px] sm:text-xs text-emerald-200/95 bg-emerald-950/40 border border-emerald-500/25 rounded-lg px-2.5 py-1.5 leading-snug">${escapeHtml(
+                    card.note
+                  )}</p>`
+                : ''
+            }
+          `;
+          detailCardsEl.appendChild(cardEl);
+        });
+      } else {
+        detailSection.classList.add('hidden');
+        detailCardsEl.innerHTML = '';
+      }
     }
 
-    document.getElementById('modal-materi')?.classList.remove('hidden');
+    // 5. Update active TTS script and Nura hint
+    const activeTitle = gateData ? gateData.title : stageCurriculum.title;
+    const activeTts = gateData ? gateData.ttsText : stageCurriculum.ttsText;
+    this.activeMateriTtsText = `${activeTitle}. ${activeTts}. Poin penting: ${activePoints.join('. ')}`;
+
+    const configuredCount = this.missionConfig.questionCounts[String(this.currentStageId)] ?? 10;
+    const nuraHint = document.getElementById('materi-nura-hint');
+    if (nuraHint) {
+      nuraHint.textContent = gateData
+        ? `Kamu sedang belajar di ${gateData.gateLabel}. Kamu juga bisa menjelajahi hutan lainnya atau langsung hadapi ${configuredCount} soal AKM pada Rintangan Pemahaman dengan Pesawat 3D!`
+        : `Rintangan Pemahaman pada elemen ini terdiri dari ${configuredCount} soal AKM (10% Mudah, 60% Sedang, 30% Sulit). Kendalikan pesawat 3D menuju platform jawaban yang tepat!`;
+    }
   }
 
   private playTTS() {
@@ -2064,7 +2250,9 @@ class GameApp {
     this.stopTTS();
 
     if ('speechSynthesis' in window) {
-      const text = `${this.currentStageCurriculum.title}. ${this.currentStageCurriculum.ttsText}. Poin penting: ${this.currentStageCurriculum.points.join('. ')}`;
+      const text =
+        this.activeMateriTtsText ||
+        `${this.currentStageCurriculum.title}. ${this.currentStageCurriculum.ttsText}. Poin penting: ${this.currentStageCurriculum.points.join('. ')}`;
       const utter = new SpeechSynthesisUtterance(text);
       utter.lang = 'id-ID';
       utter.rate = 0.95;

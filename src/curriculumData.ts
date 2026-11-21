@@ -8,6 +8,31 @@ export interface QuizQuestion {
   difficulty?: 'mudah' | 'sedang' | 'sulit';
 }
 
+export interface ForestGateDetailCard {
+  badge: string;
+  title: string;
+  arabic?: string;
+  transliteration?: string;
+  meaning?: string;
+  letters?: string[];
+  note?: string;
+}
+
+export interface ForestGateMaterial {
+  id: string;
+  gateLabel: string;
+  title: string;
+  bannerDesc: string;
+  arabic: string;
+  transliteration?: string;
+  translation: string;
+  description: string;
+  points: string[];
+  detailHeading?: string;
+  detailCards?: ForestGateDetailCard[];
+  ttsText: string;
+}
+
 export interface StageCurriculum {
   title: string;
   element: string;
@@ -20,7 +45,193 @@ export interface StageCurriculum {
   bossName: string;
   bossDesc: string;
   quiz: QuizQuestion[];
+  forestGates?: Record<string, ForestGateMaterial>;
 }
+
+const GRADE6_STAGE1_FOREST_GATES: Record<string, ForestGateMaterial> = {
+  's1-tajwid': {
+    id: 's1-tajwid',
+    gateLabel: 'Hutan Tajwid',
+    title: 'Hukum Bacaan Gunnah pada Q.S. al-Insyirah',
+    bannerDesc: 'Fase C Kelas 6 • Mengenal dan mempraktikkan bacaan dengung Gunnah Musyaddadah (نّ dan مّ) pada Q.S. al-Insyirah.',
+    arabic: 'فَإِنَّ مَعَ الْعُسْرِ يُسْرًا ۝ إِنَّ مَعَ الْعُسْرِ يُسْرًا',
+    transliteration: "Fa-inna ma'al-'usri yusrā • Inna ma'al-'usri yusrā (Q.S. al-Insyirah: 5–6)",
+    translation: 'Maka sesungguhnya beserta kesulitan ada kemudahan. Sesungguhnya beserta kesulitan itu ada kemudahan.',
+    description: 'Di Hutan Tajwid Fase C Kelas 6, kita mempelajari hukum bacaan Gunnah (Gunnah Musyaddadah) yang terdapat dalam Q.S. al-Insyirah. Gunnah artinya suara dengung yang keluar dari pangkal hidung (al-khaisyum) ketika membaca huruf Nun bertasydid (نّ) atau Mim bertasydid (مّ) dengan panjang tahanan 2 harakat (1 alif).',
+    points: [
+      'Pengertian Gunnah Musyaddadah: Setiap huruf Nun bertasydid (نّ) dan Mim bertasydid (مّ) wajib dibaca berdengung jelas (wajibul gunnah) melalui pangkal hidung (al-khaisyum).',
+      'Panjang bacaan Gunnah: Ditahan selama 2 harakat (kira-kira dua ketukan lembut) sebelum melafalkan harakat huruf tersebut.',
+      'Penerapan pada Q.S. al-Insyirah Ayat 5: Pada lafal فَإِنَّ (fa-inna) terdapat huruf Nun bertasydid (نّ), sehingga wajib dibaca dengung 2 harakat.',
+      'Penerapan pada Q.S. al-Insyirah Ayat 6: Pada lafal إِنَّ (inna) terdapat huruf Nun bertasydid (نّ), sehingga kembali dibaca dengung 2 harakat dengan tartil.',
+      'Cara membedakan: Ayat 1–4 dan 7–8 Q.S. al-Insyirah tidak memiliki نّ atau مّ (Gunnah Musyaddadah); fokus bacaan Gunnah Musyaddadah pada surah ini berada di ayat 5 dan ayat 6.'
+    ],
+    detailHeading: 'Analisis Contoh Hukum Bacaan Gunnah pada Q.S. al-Insyirah',
+    detailCards: [
+      {
+        badge: 'Q.S. al-Insyirah Ayat 5',
+        title: 'Lafal Gunnah: فَإِنَّ (Nun Bertasydid نّ)',
+        arabic: 'فَإِنَّ مَعَ الْعُسْرِ يُسْرًا',
+        transliteration: "Fa-inna ma'al-'usri yusrā",
+        meaning: 'Maka sesungguhnya beserta kesulitan ada kemudahan.',
+        note: 'Sebab Gunnah: Huruf Nun bertasydid (نّ) pada kata فَإِنَّ. Cara baca: tahan dengung halus dari pangkal hidung selama 2 harakat.'
+      },
+      {
+        badge: 'Q.S. al-Insyirah Ayat 6',
+        title: 'Lafal Gunnah: إِنَّ (Nun Bertasydid نّ)',
+        arabic: 'إِنَّ مَعَ الْعُسْرِ يُسْرًا',
+        transliteration: "Inna ma'al-'usri yusrā",
+        meaning: 'Sesungguhnya beserta kesulitan itu ada kemudahan.',
+        note: 'Sebab Gunnah: Huruf Nun bertasydid (نّ) pada kata إِنَّ. Cara baca: tahan dengung di pangkal hidung 2 harakat agar bacaan tartil dan fasih.'
+      },
+      {
+        badge: 'Tips Praktik Tartil',
+        title: 'Kunci Makhraj al-Khaisyum (Pangkal Hidung)',
+        note: 'Saat mengucapkan "fa-in-na" dan "in-na", tempelkan ujung lidah pada gusi gigi seri atas lalu alirkan suara dengung melalui hidung selama 2 ketukan sebelum melepas bunyi "na".'
+      }
+    ],
+    ttsText: 'Selamat datang di Hutan Tajwid Fase C Kelas 6! Materi kita adalah Hukum Bacaan Gunnah pada Surah al-Insyirah. Gunnah Musyaddadah terjadi apabila ada huruf nun bertasydid atau mim bertasydid, yang wajib dibaca berdengung jelas dari pangkal hidung selama dua harakat. Di dalam Surah al-Insyirah, hukum bacaan Gunnah terdapat pada ayat kelima yaitu lafal fa-inna ma al usri yusra, dan ayat keenam yaitu lafal inna ma al usri yusra, keduanya karena terdapat huruf nun bertasydid.'
+  },
+  's1-alquran': {
+    id: 's1-alquran',
+    gateLabel: "Hutan Al-Qur'an",
+    title: 'Lafal, Arti, dan Pesan Pokok Q.S. ad-Duha & Q.S. al-Insyirah',
+    bannerDesc: 'Fase C Kelas 6 • Membaca, mengartikan, dan mengamalkan pesan pokok Q.S. ad-Duha (11 ayat) dan Q.S. al-Insyirah (8 ayat).',
+    arabic: 'مَا وَدَّعَكَ رَبُّكَ وَمَا قَلَىٰ ۝ فَإِنَّ مَعَ الْعُسْرِ يُسْرًا',
+    transliteration: "Mā wadda'aka rabbuka wa mā qalā (ad-Duha: 3) • Fa-inna ma'al-'usri yusrā (al-Insyirah: 5)",
+    translation: 'Tuhanmu tidak meninggalkan engkau (Muhammad) dan tidak (pula) membencimu • Maka sesungguhnya beserta kesulitan ada kemudahan.',
+    description: 'Di Hutan Al-Qur\'an Fase C Kelas 6, kita mendalami lafal, arti, dan pesan pokok dua surah Makkiyah yang saling berkaitan erat: Q.S. ad-Duha (surah ke-93, 11 ayat) dan Q.S. al-Insyirah (surah ke-94, 8 ayat). Keduanya diturunkan untuk menenangkan hati Nabi Muhammad saw. serta menanamkan sikap optimis, peduli sosial, disiplin, dan syukur nikmat.',
+    points: [
+      'Q.S. ad-Duha (11 Ayat, Makkiyah): "Ad-Duha" berarti waktu matahari sepenggalahan naik (pagi). Allah menegaskan bahwa Dia tidak pernah meninggalkan dan tidak membenci hamba-Nya, serta akhirat lebih baik daripada dunia.',
+      'Pesan Pokok Q.S. ad-Duha (Ayat 9–11): Larangan berlaku sewenang-wenang/menghardik anak yatim (فَأَمَّا الْيَتِيمَ فَلَا تَقْهَرْ), larangan membentak orang yang meminta-minta (وَأَمَّا السَّائِلَ فَلَا تَنْهَرْ), dan perintah menyebut/mensyukuri nikmat Allah (وَأَمَّا بِنِعْمَةِ رَبِّكَ فَحَدِّثْ).',
+      'Q.S. al-Insyirah (8 Ayat, Makkiyah): "Al-Insyirah" berarti melapangkan dada. Allah melapangkan hati Nabi Muhammad saw., meringankan beban dakwah, dan meninggikan sebutan (nama) beliau.',
+      'Pesan Pokok Q.S. al-Insyirah (Ayat 5–8): Meyakini setiap kesulitan selalu disertai kemudahan (optimis dan pantang menyerah), disiplin segera beramal lagi setelah menyelesaikan satu tugas (فَإِذَا فَرَغْتَ فَانصَبْ), dan hanya kepada Allah tempat berharap serta bertawakal (وَإِلَىٰ رَبِّكَ فَارْغَبْ).'
+    ],
+    detailHeading: 'Ringkasan Lafal, Arti & Pesan Pokok Kedua Surah',
+    detailCards: [
+      {
+        badge: 'Q.S. ad-Duha • 11 Ayat • Makkiyah',
+        title: 'Lafal Inti & Arti Q.S. ad-Duha (Ayat 9–11)',
+        arabic: 'فَأَمَّا الْيَتِيمَ فَلَا تَقْهَرْ ۝ وَأَمَّا السَّائِلَ فَلَا تَنْهَرْ ۝ وَأَمَّا بِنِعْمَةِ رَبِّكَ فَحَدِّثْ',
+        transliteration: "Fa-ammal-yatīma falā taqhar • Wa ammas-sā'ila falā tanhar • Wa ammā bini'mati rabbika faḥaddiṡ",
+        meaning: 'Maka terhadap anak yatim janganlah engkau berlaku sewenang-wenang. Dan terhadap orang yang meminta-minta janganlah engkau menghardiknya. Dan terhadap nikmat Tuhanmu, hendaklah engkau nyatakan (dengan bersyukur).',
+        note: 'Pesan Pokok: Yakin akan kasih sayang Allah Swt., menyayangi anak yatim, santun kepada peminta-minta, serta bersyukur atas segala nikmat.'
+      },
+      {
+        badge: 'Q.S. al-Insyirah • 8 Ayat • Makkiyah',
+        title: 'Lafal Inti & Arti Q.S. al-Insyirah (Ayat 1, 5–8)',
+        arabic: 'أَلَمْ نَشْرَحْ لَكَ صَدْرَكَ ۝ ... فَإِنَّ مَعَ الْعُسْرِ يُسْرًا ۝ إِنَّ مَعَ الْعُسْرِ يُسْرًا ۝ فَإِذَا فَرَغْتَ فَانصَبْ ۝ وَإِلَىٰ رَبِّكَ فَارْغَبْ',
+        transliteration: "Alam nasyraḥ laka ṣadrak • Fa-inna ma'al-'usri yusrā • Inna ma'al-'usri yusrā • Fa-iżā faragta fanṣab • Wa ilā rabbika fargab",
+        meaning: 'Bukankah Kami telah melapangkan dadamu? ... Maka sesungguhnya beserta kesulitan ada kemudahan, sesungguhnya beserta kesulitan itu ada kemudahan. Maka apabila engkau telah selesai (dari suatu urusan), tetaplah bekerja keras (untuk urusan yang lain), dan hanya kepada Tuhanmulah engkau berharap.',
+        note: 'Pesan Pokok: Berlapang dada menghadapi ujian, optimis karena kemudahan menyertai kesulitan, produktif memanfaatkan waktu, dan bertawakal hanya kepada Allah Swt.'
+      }
+    ],
+    ttsText: 'Selamat datang di Hutan Al-Qur\'an Fase C Kelas 6! Materi kita adalah lafal, arti, dan pesan pokok Surah ad-Duha dan Surah al-Insyirah. Surah ad-Duha terdiri dari sebelas ayat yang mengajarkan bahwa Allah tidak pernah meninggalkan hamba-Nya, melarang kita menyakiti anak yatim dan peminta-minta, serta memerintahkan kita bersyukur atas nikmat Allah. Sedangkan Surah al-Insyirah terdiri dari delapan ayat yang mengajarkan kelapangan hati, keyakinan bahwa bersama kesulitan selalu ada kemudahan, sikap disiplin berkarya, dan tawakal hanya kepada Allah Subhanahu wa Ta\'ala.'
+  },
+  's1-hadis': {
+    id: 's1-hadis',
+    gateLabel: 'Hutan Hadis',
+    title: 'Hadis tentang Keutamaan Menyayangi & Menyantuni Anak Yatim',
+    bannerDesc: 'Fase C Kelas 6 • Memahami dan mengamalkan hadis sahih Rasulullah saw. tentang kedudukan mulia orang yang menyayangi anak yatim.',
+    arabic: 'أَنَا وَكَافِلُ الْيَتِيمِ فِي الْجَنَّةِ هَكَذَا، وَأَشَارَ بِالسَّبَّابَةِ وَالْوُسْطَى وَفَرَّجَ بَيْنَهُمَا شَيْئًا',
+    transliteration: "Anā wa kāfilul-yatīmi fil-jannati hākażā, wa asyāra bis-sabbābati wal-wusṭā wa farraja bainahumā syai'ā.",
+    translation: '"Aku dan orang yang menanggung (memelihara) anak yatim di surga kelak seperti ini." Beliau mengisyaratkan dengan jari telunjuk dan jari tengah serta merenggangkan sedikit di antara keduanya. (H.R. al-Bukhari dari Sahl bin Sa\'ad r.a.)',
+    description: 'Di Hutan Hadis Fase C Kelas 6, kita memetik teladan agung dari hadis sahih riwayat Imam al-Bukhari tentang keutamaan menyantuni, melindungi, dan menyayangi anak yatim. Hadis ini menguatkan perintah Allah Swt. dalam Q.S. ad-Duha ayat 9 agar kita memuliakan anak yatim dengan penuh kasih sayang.',
+    points: [
+      'Pengertian Anak Yatim: Anak yang belum balig yang ditinggal wafat oleh ayahnya, sehingga membutuhkan perhatian, kasih sayang, dan dukungan dari lingkungan sekitar.',
+      'Kedudukan Mulia di Surga: Rasulullah saw. menjanjikan bahwa orang yang mengasuh, menanggung, dan menyayangi anak yatim akan berada sangat dekat bersama beliau di surga—bagaikan dekatnya jari telunjuk dan jari tengah.',
+      'Keutamaan di Dunia: Menyayangi dan mengusap kepala anak yatim dengan lembut dapat melunakkan hati yang keras, mendatangkan keberkahan rezeki, dan menumbuhkan kepedulian sosial.',
+      'Pengamalan Siswa Kelas 6: Berteman akrab dengan teman yatim tanpa membeda-bedakan, tidak mengejek atau menghardiknya, menyisihkan sebagian uang saku untuk santunan yatim, serta mendoakan kebaikan bagi mereka.'
+    ],
+    detailHeading: 'Pelajaran & Wujud Nyata Keutamaan Terhadap Anak Yatim',
+    detailCards: [
+      {
+        badge: 'Makna Kafilul Yatim',
+        title: 'Siapakah Pengasuh / Penanggung Anak Yatim?',
+        note: 'Kafilul yatim adalah orang yang mengurus kebutuhan anak yatim—baik kebutuhan hidup, pendidikan, bimbingan akhlak, maupun kasih sayang—baik dari keluarga dekat maupun orang lain yang tulus membantu.'
+      },
+      {
+        badge: 'Teladan di Sekolah',
+        title: '4 Cara Siswa Kelas 6 Memuliakan Teman Yatim',
+        note: '1) Menyapa dan mengajak bermain bersama tanpa pilih kasih. 2) Menjaga tutur kata yang lembut (tidak mengejek/menghardik). 3) Berbagi alat tulis, buku, atau bekal dengan ikhlas. 4) Ikut berinfak pada kegiatan santunan yatim di sekolah.'
+      }
+    ],
+    ttsText: 'Selamat datang di Hutan Hadis Fase C Kelas 6! Materi kita adalah hadis tentang keutamaan terhadap anak yatim. Rasulullah shallallahu alaihi wasallam bersabda dalam hadis riwayat Imam Bukhari: Aku dan orang yang menanggung anak yatim di surga kelak seperti ini, sambil beliau mengisyaratkan jari telunjuk dan jari tengah yang sangat berdekatan. Mari kita memuliakan, menyayangi, dan berbagi dengan anak yatim dengan tulus dan penuh hormat.'
+  },
+  's1-hijaiyah': {
+    id: 's1-hijaiyah',
+    gateLabel: 'Hutan Hijaiyah',
+    title: 'Huruf Tunggal Penyusun Ayat 1–3 Q.S. ad-Duha & Q.S. al-Insyirah beserta Transliterasinya',
+    bannerDesc: 'Fase C Kelas 6 • Mengurai huruf hijaiyah tunggal penyusun 3 ayat pertama Q.S. ad-Duha dan 3 ayat pertama Q.S. al-Insyirah lengkap dengan transliterasi.',
+    arabic: 'وَالضُّحَىٰ ۝ وَاللَّيْلِ إِذَا سَجَىٰ ۝ مَا وَدَّعَكَ رَبُّكَ وَمَا قَلَىٰ',
+    transliteration: "Contoh 3 Ayat Q.S. ad-Duha (1–3) & 3 Ayat Q.S. al-Insyirah (1–3)",
+    translation: 'Mengenal bentuk huruf tunggal (mufradah) yang menyusun setiap kata pada ayat 1–3 Q.S. ad-Duha dan ayat 1–3 Q.S. al-Insyirah beserta cara membacanya.',
+    description: 'Di Hutan Hijaiyah Fase C Kelas 6, kita berlatih mengidentifikasi huruf-huruf hijaiyah tunggal (lepas) yang menyusun ayat 1 sampai ayat 3 dari Q.S. ad-Duha serta ayat 1 sampai ayat 3 dari Q.S. al-Insyirah, lengkap dengan transliterasi Latin agar kita terampil membaca dan menulis Al-Qur\'an secara tepat.',
+    points: [
+      'Arah membaca & mengurai huruf hijaiyah selalu dimulai dari kanan ke kiri.',
+      'Huruf bertasydid (seperti ضّ, لّ, دّ, بّ) saat diurai ke bentuk tulisan rasm dituliskan sesuai huruf tunggal penyusunnya, sedangkan saat dibaca ditekan/rangkap sesuai transliterasi.',
+      'Perhatikan huruf yang tidak dapat disambung ke kiri (ا، د، ذ، ر، ز، و) seperti pada kata وَدَّعَكَ، إِذَا، صَدْرَكَ، dan وِزْرَكَ.',
+      'Tanda titik pemisah (•) pada uraian huruf di bawah menandakan batas antar kata agar mudah diikuti.'
+    ],
+    detailHeading: 'Uraian Huruf Tunggal & Transliterasi Ayat 1–3 Q.S. ad-Duha dan Q.S. al-Insyirah',
+    detailCards: [
+      {
+        badge: 'Q.S. ad-Duha • Ayat 1',
+        title: 'Ayat 1 Q.S. ad-Duha',
+        arabic: 'وَالضُّحَىٰ',
+        transliteration: 'Waḍ-ḍuḥā',
+        meaning: 'Demi waktu duha (ketika matahari naik sepenggalahan).',
+        letters: ['و', 'ا', 'ل', 'ض', 'ح', 'ى'],
+        note: '6 huruf tunggal (kanan ke kiri): wau – alif – lam – dad – ha – alif maqsurah (ya tanpa titik).'
+      },
+      {
+        badge: 'Q.S. ad-Duha • Ayat 2',
+        title: 'Ayat 2 Q.S. ad-Duha',
+        arabic: 'وَاللَّيْلِ إِذَا سَجَىٰ',
+        transliteration: 'Wal-laili iżā sajā',
+        meaning: 'Dan demi malam apabila telah sunyi.',
+        letters: ['و', 'ا', 'ل', 'ل', 'ي', 'ل', '•', 'إ', 'ذ', 'ا', '•', 'س', 'ج', 'ى'],
+        note: 'Tersusun dari 3 kata: وَاللَّيْلِ (و ا ل ل ي ل), إِذَا (إ ذ ا), dan سَجَىٰ (س ج ى).'
+      },
+      {
+        badge: 'Q.S. ad-Duha • Ayat 3',
+        title: 'Ayat 3 Q.S. ad-Duha',
+        arabic: 'مَا وَدَّعَكَ رَبُّكَ وَمَا قَلَىٰ',
+        transliteration: "Mā wadda'aka rabbuka wa mā qalā",
+        meaning: 'Tuhanmu tidak meninggalkan engkau (Muhammad) dan tidak (pula) membencimu.',
+        letters: ['م', 'ا', '•', 'و', 'د', 'ع', 'ك', '•', 'ر', 'ب', 'ك', '•', 'و', 'م', 'ا', '•', 'ق', 'ل', 'ى'],
+        note: 'Tersusun dari 5 kata: مَا (م ا), وَدَّعَكَ (و د ع ك), رَبُّكَ (ر ب ك), وَمَا (و م ا), dan قَلَىٰ (ق ل ى).'
+      },
+      {
+        badge: 'Q.S. al-Insyirah • Ayat 1',
+        title: 'Ayat 1 Q.S. al-Insyirah',
+        arabic: 'أَلَمْ نَشْرَحْ لَكَ صَدْرَكَ',
+        transliteration: 'Alam nasyraḥ laka ṣadrak(a)',
+        meaning: 'Bukankah Kami telah melapangkan dadamu (Muhammad)?',
+        letters: ['أ', 'ل', 'م', '•', 'ن', 'ش', 'ر', 'ح', '•', 'ل', 'ك', '•', 'ص', 'د', 'ر', 'ك'],
+        note: 'Tersusun dari 4 kata: أَلَمْ (أ ل م), نَشْرَحْ (ن ش ر ح), لَكَ (ل ك), dan صَدْرَكَ (ص د ر ك).'
+      },
+      {
+        badge: 'Q.S. al-Insyirah • Ayat 2',
+        title: 'Ayat 2 Q.S. al-Insyirah',
+        arabic: 'وَوَضَعْنَا عَنكَ وِزْرَكَ',
+        transliteration: "Wa waḍa'nā 'anka wizrak(a)",
+        meaning: 'Dan Kami pun telah menurunkan bebanmu darimu,',
+        letters: ['و', 'و', 'ض', 'ع', 'ن', 'ا', '•', 'ع', 'ن', 'ك', '•', 'و', 'ز', 'ر', 'ك'],
+        note: 'Tersusun dari 3 kata: وَوَضَعْنَا (و و ض ع ن ا), عَنكَ (ع ن ك), dan وِزْرَكَ (و ز ر ك).'
+      },
+      {
+        badge: 'Q.S. al-Insyirah • Ayat 3',
+        title: 'Ayat 3 Q.S. al-Insyirah',
+        arabic: 'الَّذِي أَنقَضَ ظَهْرَكَ',
+        transliteration: 'Allażī anqaḍa ẓahrak(a)',
+        meaning: 'yang memberatkan punggungmu,',
+        letters: ['ا', 'ل', 'ذ', 'ي', '•', 'أ', 'ن', 'ق', 'ض', '•', 'ظ', 'ه', 'ر', 'ك'],
+        note: 'Tersusun dari 3 kata: الَّذِي (ا ل ذ ي), أَنقَضَ (أ ن ق ض), dan ظَهْرَكَ (ظ ه ر ك).'
+      }
+    ],
+    ttsText: 'Selamat datang di Hutan Hijaiyah Fase C Kelas 6! Di sini kita mempelajari huruf tunggal hijaiyah penyusun ayat satu sampai tiga Surah ad-Duha dan Surah al-Insyirah lengkap dengan transliterasinya. Surah ad-Duha ayat satu berbunyi wad-duha, ayat dua wal-laili iza saja, dan ayat tiga ma wadda aka rabbuka wa ma qala. Sedangkan Surah al-Insyirah ayat satu berbunyi alam nasyrah laka sadrak, ayat dua wa wada na anka wizrak, dan ayat tiga allazi anqada zahrak. Amati susunan huruf tunggalnya dari kanan ke kiri agar mahir membaca dan menulis Al-Qur\'an.'
+  }
+};
 
 export interface CurriculumMap {
   [season: number]: {
@@ -1221,6 +1432,7 @@ export const CURRICULUM_DATA: CurriculumMap = {
         ttsText: "Materi PAI Kelas 6 Al-Qur'an dan Hadis membahas Surah ad-Duha, Surah al-Insyirah, dan hukum bacaan Gunnah. Surah ad-Duha terdiri atas sebelas ayat yang mengajarkan syukur dan kasih sayang kepada anak yatim. Surah al-Insyirah terdiri atas delapan ayat yang mengajarkan ketabahan karena bersama kesulitan ada kemudahan. Sedangkan hukum bacaan Gunnah berlaku pada huruf nun bertasydid dan mim bertasydid yang dibaca mendengung dua harakat melalui pangkal hidung.",
         bossName: "Rintangan Pemahaman: Q.S. ad-Duha, al-Insyirah & Gunnah",
         bossDesc: "Taklukkan 10 soal AKM Q.S. ad-Duha, Q.S. al-Insyirah, dan Hukum Bacaan Gunnah dengan Pesawat 3D!",
+        forestGates: GRADE6_STAGE1_FOREST_GATES,
         quiz: [
           // 1. MUDAH (10%)
           {
@@ -2606,6 +2818,7 @@ export const CURRICULUM_DATA: CurriculumMap = {
         ttsText: "Materi PAI Kelas 6 Al-Qur'an dan Hadis membahas Surah ad-Duha, Surah al-Insyirah, dan hukum bacaan Gunnah. Surah ad-Duha terdiri atas sebelas ayat yang mengajarkan syukur dan kasih sayang kepada anak yatim. Surah al-Insyirah terdiri atas delapan ayat yang mengajarkan ketabahan karena bersama kesulitan ada kemudahan. Sedangkan hukum bacaan Gunnah berlaku pada huruf nun bertasydid dan mim bertasydid yang dibaca mendengung dua harakat melalui pangkal hidung.",
         bossName: "Rintangan Pemahaman: Q.S. ad-Duha, al-Insyirah & Gunnah",
         bossDesc: "Taklukkan 10 soal AKM Q.S. ad-Duha, Q.S. al-Insyirah, dan Hukum Bacaan Gunnah dengan Pesawat 3D!",
+        forestGates: GRADE6_STAGE1_FOREST_GATES,
         quiz: [
           {
             difficulty: "mudah",
