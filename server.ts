@@ -310,6 +310,42 @@ function broadcastAll(payload: unknown, excludeWs?: WebSocket) {
   }
 }
 
+function buildLeaderboardPayload() {
+  return Object.values(store.students)
+    .map((s) => {
+      let totalCorrect = 0;
+      let totalAnswered = 0;
+      for (let st = 1; st <= 5; st++) {
+        const stat = s.stageStats[String(st)];
+        if (stat) {
+          totalCorrect += stat.totalCorrect;
+          totalAnswered += stat.totalAnswered;
+        }
+      }
+      const accuracy = totalAnswered > 0 ? Math.round((totalCorrect / totalAnswered) * 100) : 0;
+      return {
+        id: s.id,
+        name: s.name,
+        institution: s.institution,
+        grade: s.grade,
+        level: s.level,
+        xp: s.xp,
+        coins: s.coins,
+        badgesCount: s.badges.filter(Boolean).length,
+        accuracy,
+        online: s.online,
+        lastSeen: s.lastSeen,
+      };
+    })
+    .sort((a, b) => {
+      if (b.xp !== a.xp) return b.xp - a.xp;
+      if (b.badgesCount !== a.badgesCount) return b.badgesCount - a.badgesCount;
+      if (b.accuracy !== a.accuracy) return b.accuracy - a.accuracy;
+      return b.lastSeen - a.lastSeen;
+    })
+    .slice(0, 20);
+}
+
 function broadcastTeacherAnalytics() {
   const analytics = buildAnalyticsPayload();
   const encoded = JSON.stringify({ type: 'analytics:update', data: analytics });
@@ -318,6 +354,7 @@ function broadcastTeacherAnalytics() {
       s.ws.send(encoded);
     }
   }
+  broadcastAll({ type: 'leaderboard:update', entries: buildLeaderboardPayload() });
 }
 
 function csvEscape(val: string | number): string {
@@ -421,6 +458,11 @@ async function startServer() {
   // 3. Get Mission Config
   app.get('/api/mission-config', (_req: Request, res: Response) => {
     res.json({ ok: true, missionConfig: store.missionConfig });
+  });
+
+  // 3B. Public Real-Time Student Leaderboard
+  app.get('/api/leaderboard', (_req: Request, res: Response) => {
+    res.json({ ok: true, leaderboard: buildLeaderboardPayload() });
   });
 
   // 4. Teacher: Get Real-Time Analytics
@@ -615,9 +657,10 @@ async function startServer() {
         if (msg.type === 'auth:join') {
           session.role = msg.role === 'teacher' ? 'teacher' : 'student';
 
-          // Always send current mission config and recent chat
+          // Always send current mission config, leaderboard snapshot, and recent chat
           sendJson(ws, { type: 'mission:config', config: store.missionConfig });
           sendJson(ws, { type: 'chat:history', messages: chatHistory.slice(-30) });
+          sendJson(ws, { type: 'leaderboard:update', entries: buildLeaderboardPayload() });
 
           if (session.role === 'teacher') {
             sendJson(ws, { type: 'players:snapshot', players: Array.from(livePlayers.values()) });

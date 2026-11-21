@@ -91,6 +91,20 @@ export interface TeacherAnalyticsPayload {
   timestamp: number;
 }
 
+export interface LeaderboardEntry {
+  id: string;
+  name: string;
+  institution: string;
+  grade: number;
+  level: number;
+  xp: number;
+  coins: number;
+  badgesCount: number;
+  accuracy: number;
+  online: boolean;
+  lastSeen: number;
+}
+
 export interface MultiplayerCallbacks {
   onPlayersSnapshot?: (players: LiveRemotePlayer[]) => void;
   onPlayerJoined?: (player: LiveRemotePlayer) => void;
@@ -100,6 +114,7 @@ export interface MultiplayerCallbacks {
   onChatMessage?: (message: LiveChatMessage) => void;
   onMissionConfig?: (config: MissionConfig) => void;
   onAnalyticsUpdate?: (data: TeacherAnalyticsPayload) => void;
+  onLeaderboardUpdate?: (entries: LeaderboardEntry[]) => void;
   onConnectionChange?: (connected: boolean) => void;
 }
 
@@ -127,7 +142,7 @@ export class MultiplayerClient {
         const msg = event.data;
         if (!msg || typeof msg !== 'object') return;
         // When WS is connected, let the authoritative server handle multiplayer events
-        if (this.wsConnected && msg.type !== 'analytics:update') return;
+        if (this.wsConnected && msg.type !== 'analytics:update' && msg.type !== 'leaderboard:update') return;
 
         switch (msg.type) {
           case 'bc:hello':
@@ -155,6 +170,9 @@ export class MultiplayerClient {
             break;
           case 'analytics:update':
             if (msg.data) this.callbacks.onAnalyticsUpdate?.(msg.data);
+            break;
+          case 'leaderboard:update':
+            if (Array.isArray(msg.entries)) this.callbacks.onLeaderboardUpdate?.(msg.entries);
             break;
         }
       };
@@ -252,6 +270,9 @@ export class MultiplayerClient {
               break;
             case 'analytics:update':
               if (msg.data) this.callbacks.onAnalyticsUpdate?.(msg.data);
+              break;
+            case 'leaderboard:update':
+              if (Array.isArray(msg.entries)) this.callbacks.onLeaderboardUpdate?.(msg.entries);
               break;
           }
         } catch (err) {

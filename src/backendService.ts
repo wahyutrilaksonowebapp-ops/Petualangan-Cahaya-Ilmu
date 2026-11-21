@@ -1,4 +1,5 @@
 import type {
+  LeaderboardEntry,
   MissionConfig,
   StudentAnalyticsRow,
   TeacherAnalyticsPayload,
@@ -183,10 +184,48 @@ export function buildLocalAnalyticsPayload(): TeacherAnalyticsPayload {
   };
 }
 
+export function buildLocalLeaderboardEntries(): LeaderboardEntry[] {
+  const store = readLocalStore();
+  return Object.values(store.students)
+    .map((s) => {
+      let totalCorrect = 0;
+      let totalAnswered = 0;
+      for (let st = 1; st <= 5; st++) {
+        const stat = s.stageStats?.[String(st)];
+        if (stat) {
+          totalCorrect += stat.totalCorrect;
+          totalAnswered += stat.totalAnswered;
+        }
+      }
+      const accuracy = totalAnswered > 0 ? Math.round((totalCorrect / totalAnswered) * 100) : 0;
+      return {
+        id: s.id,
+        name: s.name,
+        institution: s.institution,
+        grade: s.grade,
+        level: s.level,
+        xp: s.xp,
+        coins: s.coins,
+        badgesCount: (s.badges || []).filter(Boolean).length,
+        accuracy,
+        online: s.online,
+        lastSeen: s.lastSeen,
+      };
+    })
+    .sort((a, b) => {
+      if (b.xp !== a.xp) return b.xp - a.xp;
+      if (b.badgesCount !== a.badgesCount) return b.badgesCount - a.badgesCount;
+      if (b.accuracy !== a.accuracy) return b.accuracy - a.accuracy;
+      return b.lastSeen - a.lastSeen;
+    })
+    .slice(0, 20);
+}
+
 function broadcastLocalAnalytics() {
   const ch = getChannel();
   if (ch) {
     ch.postMessage({ type: 'analytics:update', data: buildLocalAnalyticsPayload() });
+    ch.postMessage({ type: 'leaderboard:update', entries: buildLocalLeaderboardEntries() });
   }
 }
 
@@ -358,6 +397,16 @@ export async function loginTeacher(
     ok: false,
     error: 'Username atau Password Guru salah! Periksa kembali kredensial akun Guru.',
   };
+}
+
+export async function fetchLeaderboard(): Promise<LeaderboardEntry[]> {
+  const res = await safeJsonFetch<{ ok?: boolean; leaderboard?: LeaderboardEntry[] }>(
+    '/api/leaderboard'
+  );
+  if (res.available && res.ok && Array.isArray(res.data?.leaderboard)) {
+    return res.data.leaderboard;
+  }
+  return buildLocalLeaderboardEntries();
 }
 
 export async function fetchTeacherAnalytics(): Promise<TeacherAnalyticsPayload> {

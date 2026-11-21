@@ -8,10 +8,12 @@ import {
   LiveChatMessage,
   TeacherAnalyticsPayload,
   StudentAnalyticsRow,
+  LeaderboardEntry,
 } from './multiplayerClient.ts';
 import { renderTeacherProgressPieChart } from './teacherChart.ts';
 import {
   fetchMissionConfig,
+  fetchLeaderboard,
   loginStudent,
   loginTeacher,
   fetchTeacherAnalytics,
@@ -63,6 +65,305 @@ function escapeHtml(text: string): string {
     .replace(/'/g, '&#39;');
 }
 
+/**
+ * Lightweight Three.js Star-Burst Particle Engine (Single pooled Points draw call + shockwave ring).
+ * Zero per-frame GC allocations; procedural 5-pointed star sprite texture in SRGBColorSpace.
+ */
+class StarBurstParticleEngine {
+  private readonly maxParticles: number = 280;
+  private readonly parent: THREE.Object3D;
+  private readonly geometry: THREE.BufferGeometry;
+  private readonly material: THREE.PointsMaterial;
+  private readonly points: THREE.Points;
+  private readonly starTexture: THREE.CanvasTexture;
+
+  // Shockwave celebratory halo ring
+  private readonly ringGeo: THREE.RingGeometry;
+  private readonly ringMat: THREE.MeshBasicMaterial;
+  private readonly ringMesh: THREE.Mesh;
+  private ringAge: number = 999;
+  private ringDuration: number = 0.58;
+
+  // Pre-allocated typed arrays (zero per-frame allocations)
+  private readonly positions: Float32Array;
+  private readonly colors: Float32Array;
+  private readonly baseColors: Float32Array;
+  private readonly velocities: Float32Array;
+  private readonly ages: Float32Array;
+  private readonly lifetimes: Float32Array;
+  private readonly twinklePhases: Float32Array;
+  private cursor: number = 0;
+  private hasActiveParticles: boolean = false;
+
+  private readonly celebrationPalette: THREE.Color[] = [
+    new THREE.Color(0xfde047), // bright gold
+    new THREE.Color(0x34d399), // emerald glow
+    new THREE.Color(0x38bdf8), // sky cyan
+    new THREE.Color(0xffffff), // pure star core
+    new THREE.Color(0xf472b6), // festive pink-gold
+    new THREE.Color(0xf59e0b), // warm amber
+  ];
+
+  private readonly missPalette: THREE.Color[] = [
+    new THREE.Color(0xfb7185), // soft rose
+    new THREE.Color(0xf59e0b), // warm amber
+    new THREE.Color(0xfca5a5), // light coral
+  ];
+
+  constructor(parent: THREE.Object3D) {
+    this.parent = parent;
+    this.starTexture = this.createStarSpriteTexture();
+
+    this.positions = new Float32Array(this.maxParticles * 3);
+    this.colors = new Float32Array(this.maxParticles * 3);
+    this.baseColors = new Float32Array(this.maxParticles * 3);
+    this.velocities = new Float32Array(this.maxParticles * 3);
+    this.ages = new Float32Array(this.maxParticles);
+    this.lifetimes = new Float32Array(this.maxParticles);
+    this.twinklePhases = new Float32Array(this.maxParticles);
+
+    for (let i = 0; i < this.maxParticles; i++) {
+      this.positions[i * 3 + 1] = -9999;
+      this.ages[i] = 1;
+      this.lifetimes[i] = 0;
+    }
+
+    this.geometry = new THREE.BufferGeometry();
+    this.geometry.setAttribute('position', new THREE.BufferAttribute(this.positions, 3));
+    this.geometry.setAttribute('color', new THREE.BufferAttribute(this.colors, 3));
+
+    this.material = new THREE.PointsMaterial({
+      size: 0.72,
+      map: this.starTexture,
+      transparent: true,
+      opacity: 1,
+      vertexColors: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      sizeAttenuation: true,
+    });
+
+    this.points = new THREE.Points(this.geometry, this.material);
+    this.points.frustumCulled = false;
+    this.points.renderOrder = 20;
+    this.parent.add(this.points);
+
+    // Expanding celebratory star shockwave ring
+    this.ringGeo = new THREE.RingGeometry(0.45, 0.72, 32);
+    this.ringMat = new THREE.MeshBasicMaterial({
+      color: 0xfde047,
+      transparent: true,
+      opacity: 0,
+      side: THREE.DoubleSide,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+    this.ringMesh = new THREE.Mesh(this.ringGeo, this.ringMat);
+    this.ringMesh.visible = false;
+    this.ringMesh.renderOrder = 19;
+    this.parent.add(this.ringMesh);
+  }
+
+  private createStarSpriteTexture(): THREE.CanvasTexture {
+    const size = 128;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      const cx = size / 2;
+      const cy = size / 2;
+
+      // Soft radiant glow aura
+      const glow = ctx.createRadialGradient(cx, cy, 4, cx, cy, size * 0.48);
+      glow.addColorStop(0, 'rgba(255, 255, 255, 1)');
+      glow.addColorStop(0.28, 'rgba(255, 250, 220, 0.75)');
+      glow.addColorStop(0.6, 'rgba(255, 225, 130, 0.22)');
+      glow.addColorStop(1, 'rgba(255, 225, 130, 0)');
+      ctx.fillStyle = glow;
+      ctx.fillRect(0, 0, size, size);
+
+      // Crisp 5-pointed star silhouette
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.beginPath();
+      const spikes = 5;
+      const outerR = size * 0.42;
+      const innerR = size * 0.17;
+      for (let i = 0; i < spikes * 2; i++) {
+        const r = i % 2 === 0 ? outerR : innerR;
+        const angle = (i * Math.PI) / spikes - Math.PI / 2;
+        const x = Math.cos(angle) * r;
+        const y = Math.sin(angle) * r;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.fillStyle = '#ffffff';
+      ctx.shadowColor = 'rgba(255, 255, 255, 0.95)';
+      ctx.shadowBlur = 10;
+      ctx.fill();
+      ctx.restore();
+    }
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.needsUpdate = true;
+    return tex;
+  }
+
+  public emitStarBurst(origin: THREE.Vector3, isCorrect: boolean) {
+    const count = isCorrect ? 115 : 46;
+    const palette = isCorrect ? this.celebrationPalette : this.missPalette;
+    const raySpokes = isCorrect ? 5 : 4;
+
+    for (let i = 0; i < count; i++) {
+      const idx = this.cursor;
+      this.cursor = (this.cursor + 1) % this.maxParticles;
+      const i3 = idx * 3;
+
+      // Spawn slightly clustered around the answer box impact center
+      this.positions[i3] = origin.x + (Math.random() - 0.5) * 0.45;
+      this.positions[i3 + 1] = origin.y + (Math.random() - 0.5) * 0.35;
+      this.positions[i3 + 2] = origin.z + (Math.random() - 0.5) * 0.35;
+
+      // 60% radial 5-point star-ray spokes, 40% spherical sparkle cloud
+      let vx: number;
+      let vy: number;
+      let vz: number;
+      if (i < count * 0.6) {
+        const spokeIdx = i % raySpokes;
+        const baseAngle = (spokeIdx / raySpokes) * Math.PI * 2 + Math.PI / 2;
+        const spread = (Math.random() - 0.5) * 0.32;
+        const speed = (isCorrect ? 5.2 : 3.2) + Math.random() * (isCorrect ? 6.8 : 3.4);
+        vx = Math.cos(baseAngle + spread) * speed;
+        vy = Math.sin(baseAngle + spread) * speed + (isCorrect ? 1.1 : 0.3);
+        vz = (Math.random() - 0.35) * (isCorrect ? 5.4 : 3.2);
+      } else {
+        const theta = Math.random() * Math.PI * 2;
+        const phi = Math.acos(2 * Math.random() - 1);
+        const speed = (isCorrect ? 2.4 : 1.8) + Math.random() * (isCorrect ? 5.6 : 2.8);
+        vx = Math.sin(phi) * Math.cos(theta) * speed;
+        vy = Math.sin(phi) * Math.sin(theta) * speed + 1.4;
+        vz = Math.cos(phi) * speed;
+      }
+
+      this.velocities[i3] = vx;
+      this.velocities[i3 + 1] = vy;
+      this.velocities[i3 + 2] = vz;
+
+      const color = palette[Math.floor(Math.random() * palette.length)];
+      this.baseColors[i3] = color.r;
+      this.baseColors[i3 + 1] = color.g;
+      this.baseColors[i3 + 2] = color.b;
+      this.colors[i3] = color.r;
+      this.colors[i3 + 1] = color.g;
+      this.colors[i3 + 2] = color.b;
+
+      this.ages[idx] = 0;
+      this.lifetimes[idx] = (isCorrect ? 0.95 : 0.62) + Math.random() * (isCorrect ? 0.65 : 0.32);
+      this.twinklePhases[idx] = Math.random() * Math.PI * 2;
+    }
+
+    // Trigger shockwave halo ring at impact point
+    this.ringMesh.position.set(origin.x, origin.y, origin.z + 0.15);
+    this.ringMesh.scale.setScalar(0.5);
+    this.ringMat.color.setHex(isCorrect ? 0xfde047 : 0xfb7185);
+    this.ringMat.opacity = isCorrect ? 0.95 : 0.65;
+    this.ringMesh.visible = true;
+    this.ringAge = 0;
+    this.ringDuration = isCorrect ? 0.62 : 0.42;
+
+    this.hasActiveParticles = true;
+    (this.geometry.attributes.position as THREE.BufferAttribute).needsUpdate = true;
+    (this.geometry.attributes.color as THREE.BufferAttribute).needsUpdate = true;
+  }
+
+  public update(delta: number) {
+    // Update shockwave ring
+    if (this.ringAge < this.ringDuration) {
+      this.ringAge += delta;
+      const t = Math.min(1, this.ringAge / this.ringDuration);
+      const easeOut = 1 - Math.pow(1 - t, 3);
+      this.ringMesh.scale.setScalar(0.5 + easeOut * 6.2);
+      this.ringMat.opacity = (1 - t) * 0.85;
+      if (t >= 1) {
+        this.ringMesh.visible = false;
+      }
+    }
+
+    if (!this.hasActiveParticles) return;
+
+    const drag = Math.exp(-2.15 * delta);
+    const gravity = -3.4 * delta;
+    let aliveCount = 0;
+
+    for (let i = 0; i < this.maxParticles; i++) {
+      const life = this.lifetimes[i];
+      if (life <= 0 || this.ages[i] >= life) continue;
+
+      this.ages[i] += delta;
+      const i3 = i * 3;
+
+      if (this.ages[i] >= life) {
+        this.positions[i3 + 1] = -9999;
+        this.colors[i3] = 0;
+        this.colors[i3 + 1] = 0;
+        this.colors[i3 + 2] = 0;
+        continue;
+      }
+
+      aliveCount++;
+      this.velocities[i3] *= drag;
+      this.velocities[i3 + 1] = this.velocities[i3 + 1] * drag + gravity;
+      this.velocities[i3 + 2] *= drag;
+
+      this.positions[i3] += this.velocities[i3] * delta;
+      this.positions[i3 + 1] += this.velocities[i3 + 1] * delta;
+      this.positions[i3 + 2] += this.velocities[i3 + 2] * delta;
+
+      const t = this.ages[i] / life;
+      const fade = Math.pow(1 - t, 1.45);
+      const twinkle = 0.72 + 0.28 * Math.sin(this.ages[i] * 24 + this.twinklePhases[i]);
+      const brightness = fade * twinkle;
+
+      this.colors[i3] = this.baseColors[i3] * brightness;
+      this.colors[i3 + 1] = this.baseColors[i3 + 1] * brightness;
+      this.colors[i3 + 2] = this.baseColors[i3 + 2] * brightness;
+    }
+
+    (this.geometry.attributes.position as THREE.BufferAttribute).needsUpdate = true;
+    (this.geometry.attributes.color as THREE.BufferAttribute).needsUpdate = true;
+    this.hasActiveParticles = aliveCount > 0;
+  }
+
+  public clear() {
+    for (let i = 0; i < this.maxParticles; i++) {
+      this.positions[i * 3 + 1] = -9999;
+      this.ages[i] = 1;
+      this.lifetimes[i] = 0;
+      this.colors[i * 3] = 0;
+      this.colors[i * 3 + 1] = 0;
+      this.colors[i * 3 + 2] = 0;
+    }
+    this.ringAge = 999;
+    this.ringMesh.visible = false;
+    this.hasActiveParticles = false;
+    (this.geometry.attributes.position as THREE.BufferAttribute).needsUpdate = true;
+    (this.geometry.attributes.color as THREE.BufferAttribute).needsUpdate = true;
+  }
+
+  public dispose() {
+    this.parent.remove(this.points);
+    this.parent.remove(this.ringMesh);
+    this.geometry.dispose();
+    this.material.dispose();
+    this.starTexture.dispose();
+    this.ringGeo.dispose();
+    this.ringMat.dispose();
+  }
+}
+
 class GameApp {
   private world: World3D;
   private multiplayer: MultiplayerClient;
@@ -104,8 +405,12 @@ class GameApp {
   private nuraBubbleTimer: number | null = null;
   private toastTimer: number | null = null;
 
-  // LoadingManager, Clock & Animation Loop state
+  // LoadingManager, Particle Engine, Leaderboard, Clock & Animation Loop state
   private loadingManager: THREE.LoadingManager;
+  private starBurstEngine: StarBurstParticleEngine | null = null;
+  private _burstOrigin: THREE.Vector3 = new THREE.Vector3();
+  private leaderboardEntries: LeaderboardEntry[] = [];
+  private isLeaderboardExpanded: boolean = false;
   private isAnimationLoopActive: boolean = false;
   private moveVec: THREE.Vector2 = new THREE.Vector2(0, 0);
   private clock: THREE.Clock;
@@ -169,6 +474,11 @@ class GameApp {
       setProgress(100);
       if (statusEl) {
         statusEl.textContent = 'Dunia 3D & Pesawat Rintangan Pemahaman siap!';
+      }
+
+      // Initialize lightweight Three.js Star-Burst Particle Engine attached to flight sky arena
+      if (!this.starBurstEngine) {
+        this.starBurstEngine = new StarBurstParticleEngine(this.world.flightGroup);
       }
 
       // Now safe to apply player costume, Nura evolution, reveal login modal, and start render loop
@@ -487,6 +797,10 @@ class GameApp {
           this.renderTeacherDashboard(data);
         }
       },
+      onLeaderboardUpdate: (entries: LeaderboardEntry[]) => {
+        this.leaderboardEntries = entries;
+        this.renderLeaderboardUI();
+      },
     });
   }
 
@@ -612,6 +926,9 @@ class GameApp {
         document.getElementById('teacher-spectator-bar')?.classList.add('hidden');
         document.getElementById('in-game-hud')?.classList.remove('hidden');
         document.getElementById('in-game-bottom')?.classList.remove('hidden');
+        this.setLeaderboardExpanded(false);
+        document.getElementById('leaderboard-panel')?.classList.remove('hidden');
+        void this.refreshLeaderboard();
 
         this.showToast(`Selamat datang ${this.state.playerName}! Data progresmu terekam real-time.`, 'success');
       } catch (err) {
@@ -688,6 +1005,7 @@ class GameApp {
     [
       'in-game-hud',
       'in-game-bottom',
+      'leaderboard-panel',
       'stage-map-hud',
       'teacher-spectator-bar',
       'modal-teacher-dashboard',
@@ -701,6 +1019,7 @@ class GameApp {
       'modal-victory',
     ].forEach((id) => document.getElementById(id)?.classList.add('hidden'));
 
+    this.starBurstEngine?.clear();
     document.getElementById('modal-start')?.classList.remove('hidden');
   }
 
@@ -1186,6 +1505,144 @@ class GameApp {
     document.getElementById('btn-close-nura-bubble')?.addEventListener('click', () => {
       this.closeNuraSpeech();
     });
+
+    // Non-Intrusive Collapsible Leaderboard Toggles (Never blocks player movement)
+    const toggleLeaderboard = () => {
+      sound.playButtonClick();
+      this.setLeaderboardExpanded(!this.isLeaderboardExpanded);
+      if (this.isLeaderboardExpanded) {
+        void this.refreshLeaderboard();
+      }
+    };
+    document.getElementById('btn-toggle-leaderboard')?.addEventListener('click', toggleLeaderboard);
+    document.getElementById('btn-dock-leaderboard')?.addEventListener('click', toggleLeaderboard);
+  }
+
+  private setLeaderboardExpanded(expanded: boolean) {
+    this.isLeaderboardExpanded = expanded;
+    const body = document.getElementById('leaderboard-body');
+    const chevron = document.getElementById('leaderboard-chevron');
+    if (body) {
+      if (expanded) body.classList.remove('hidden');
+      else body.classList.add('hidden');
+    }
+    if (chevron) {
+      chevron.style.transform = expanded ? 'rotate(180deg)' : 'rotate(0deg)';
+    }
+  }
+
+  private async refreshLeaderboard() {
+    const entries = await fetchLeaderboard();
+    this.leaderboardEntries = entries;
+    this.renderLeaderboardUI();
+  }
+
+  private renderLeaderboardUI() {
+    const summaryEl = document.getElementById('leaderboard-mini-summary');
+    const countTag = document.getElementById('leaderboard-count-tag');
+    const listEl = document.getElementById('leaderboard-list');
+    const selfRowEl = document.getElementById('leaderboard-self-row');
+    if (!listEl) return;
+
+    // Merge local student's latest XP/badges seamlessly so rank feedback is always instant
+    const merged = this.leaderboardEntries.map((e) => ({ ...e }));
+    if (this.role === 'student' && this.studentId) {
+      const localBadges = this.state.badges.filter(Boolean).length;
+      const existing = merged.find((e) => e.id === this.studentId);
+      if (existing) {
+        existing.xp = Math.max(existing.xp, this.state.xp);
+        existing.level = Math.max(existing.level, this.state.level);
+        existing.badgesCount = Math.max(existing.badgesCount, localBadges);
+        existing.online = true;
+      } else {
+        merged.push({
+          id: this.studentId,
+          name: this.state.playerName || 'Santri',
+          institution: this.state.institution || 'SDN Kedungringin I Beji',
+          grade: this.state.grade,
+          level: this.state.level,
+          xp: this.state.xp,
+          coins: this.state.coins,
+          badgesCount: localBadges,
+          accuracy: 0,
+          online: true,
+          lastSeen: Date.now(),
+        });
+      }
+      merged.sort((a, b) => {
+        if (b.xp !== a.xp) return b.xp - a.xp;
+        if (b.badgesCount !== a.badgesCount) return b.badgesCount - a.badgesCount;
+        if (b.accuracy !== a.accuracy) return b.accuracy - a.accuracy;
+        return b.lastSeen - a.lastSeen;
+      });
+    }
+
+    const myIndex = this.studentId ? merged.findIndex((e) => e.id === this.studentId) : -1;
+    if (summaryEl) {
+      if (myIndex >= 0) {
+        summaryEl.textContent = `Peringkat #${myIndex + 1} • ${this.state.xp} XP`;
+      } else if (merged.length > 0) {
+        summaryEl.textContent = `Top 1: ${merged[0].name}`;
+      } else {
+        summaryEl.textContent = 'Peringkat Santri';
+      }
+    }
+    if (countTag) {
+      countTag.textContent = `${merged.length} Santri`;
+    }
+
+    if (merged.length === 0) {
+      listEl.innerHTML = `<p class="text-[11px] text-slate-500 text-center py-2 italic">Belum ada data peringkat.</p>`;
+      selfRowEl?.classList.add('hidden');
+      return;
+    }
+
+    const renderRow = (entry: LeaderboardEntry, rank: number, isMe: boolean) => {
+      const medalColors = [
+        'bg-amber-400 text-slate-950',
+        'bg-slate-300 text-slate-950',
+        'bg-amber-700 text-amber-100',
+      ];
+      const rankBadgeCls =
+        rank <= 3
+          ? medalColors[rank - 1]
+          : 'bg-slate-800 text-slate-300 border border-slate-700';
+
+      return `
+        <div class="flex items-center justify-between gap-2 px-2 py-1.5 rounded-xl ${
+          isMe
+            ? 'bg-amber-500/15 border border-amber-400/50'
+            : 'bg-slate-900/75 border border-slate-800/80'
+        }">
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="w-5 h-5 rounded-md ${rankBadgeCls} flex items-center justify-center text-[10px] font-black flex-shrink-0">${rank}</span>
+            <div class="min-w-0">
+              <div class="text-[11px] font-bold ${isMe ? 'text-amber-200' : 'text-white'} truncate leading-tight">
+                ${escapeHtml(entry.name)}${isMe ? ' <span class="text-[9px] text-amber-400">(Kamu)</span>' : ''}
+              </div>
+              <div class="text-[9px] text-slate-400 truncate">
+                Lv.${entry.level} • ${entry.badgesCount}/5 Lencana${entry.accuracy > 0 ? ` • ${entry.accuracy}%` : ''}
+              </div>
+            </div>
+          </div>
+          <span class="text-[11px] font-extrabold text-amber-300 font-mono flex-shrink-0">${entry.xp} XP</span>
+        </div>
+      `;
+    };
+
+    const top5 = merged.slice(0, 5);
+    listEl.innerHTML = top5
+      .map((entry, i) => renderRow(entry, i + 1, entry.id === this.studentId))
+      .join('');
+
+    if (selfRowEl) {
+      if (myIndex >= 5) {
+        selfRowEl.innerHTML = renderRow(merged[myIndex], myIndex + 1, true);
+        selfRowEl.classList.remove('hidden');
+      } else {
+        selfRowEl.classList.add('hidden');
+      }
+    }
   }
 
   // ==================== TOKO BAJU & REAL-TIME LIVE CHAT ====================
@@ -1645,14 +2102,16 @@ class GameApp {
     this.shieldActiveForStage = this.state.skills.shield;
     this.is5050Used = false;
 
-    // Hide roaming overlays
+    // Hide roaming overlays (including leaderboard so it never obstructs 3D airplane flight)
     document.getElementById('stage-map-hud')?.classList.add('hidden');
     document.getElementById('prompt-biome-gate')?.classList.add('hidden');
     document.getElementById('prompt-chat-student')?.classList.add('hidden');
     document.getElementById('in-game-hud')?.classList.add('hidden');
     document.getElementById('in-game-bottom')?.classList.add('hidden');
+    document.getElementById('leaderboard-panel')?.classList.add('hidden');
 
     // Enter 3D Airplane Sky Arena
+    this.starBurstEngine?.clear();
     this.world.enterFlightChallenge(this.currentStageId);
     sound.playPortalEnter();
 
@@ -1672,10 +2131,14 @@ class GameApp {
   }
 
   private abortFlightChallenge() {
+    this.starBurstEngine?.clear();
     this.world.exitFlightChallenge();
     document.getElementById('modal-battle')?.classList.add('hidden');
     document.getElementById('in-game-hud')?.classList.remove('hidden');
     document.getElementById('in-game-bottom')?.classList.remove('hidden');
+    if (this.role === 'student') {
+      document.getElementById('leaderboard-panel')?.classList.remove('hidden');
+    }
     if (this.world.currentActiveStage > 0) {
       document.getElementById('stage-map-hud')?.classList.remove('hidden');
     }
@@ -1786,6 +2249,17 @@ class GameApp {
     const isCorrect = chosenLane === q.answer;
     if (isCorrect) this.flightCorrectCount++;
 
+    // Trigger celebratory Three.js Star-Burst Particle Engine right at the hit 3D answer box
+    const hitBox = this.world.answerBoxes[chosenLane];
+    if (hitBox) {
+      this._burstOrigin.copy(hitBox.group.position);
+      this._burstOrigin.z += 0.45;
+    } else {
+      this._burstOrigin.copy(this.world.airplaneGroup.position);
+      this._burstOrigin.z -= 1.2;
+    }
+    this.starBurstEngine?.emitStarBurst(this._burstOrigin, isCorrect);
+
     const banner = document.getElementById('quiz-feedback-banner');
     const feedbackIcon = document.getElementById('quiz-feedback-icon');
     const feedbackText = document.getElementById('quiz-feedback-text');
@@ -1798,6 +2272,7 @@ class GameApp {
       this.comboStreak++;
       this.addXp(30);
       this.addCoins(12);
+      this.renderLeaderboardUI();
 
       if (banner && feedbackText) {
         banner.className =
@@ -1894,9 +2369,14 @@ class GameApp {
 
   private finishFlightChallenge() {
     document.getElementById('modal-battle')?.classList.add('hidden');
+    this.starBurstEngine?.clear();
     this.world.exitFlightChallenge();
     document.getElementById('in-game-hud')?.classList.remove('hidden');
     document.getElementById('in-game-bottom')?.classList.remove('hidden');
+    if (this.role === 'student') {
+      document.getElementById('leaderboard-panel')?.classList.remove('hidden');
+      void this.refreshLeaderboard();
+    }
 
     const finalScore = Math.round((this.flightCorrectCount / Math.max(1, this.flightDeck.length)) * 100);
     sound.playFanfare();
@@ -2268,6 +2748,7 @@ class GameApp {
       move.set(0, 0);
     }
 
+    this.starBurstEngine?.update(delta);
     this.world.update(delta, move, isRunning);
 
     // Stream local student movement to server for real-time multiplayer & teacher spectator
