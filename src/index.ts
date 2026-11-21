@@ -1181,8 +1181,8 @@ class GameApp {
     const filtered = q
       ? students.filter(
           (s) =>
-            s.name.toLowerCase().includes(q) ||
-            s.institution.toLowerCase().includes(q)
+            (s.name || '').toLowerCase().includes(q) ||
+            (s.institution || '').toLowerCase().includes(q)
         )
       : students;
 
@@ -2890,13 +2890,14 @@ class GameApp {
   // ==================== KEYBOARD & TOUCH INPUT ====================
   private isTypingInInput(target: EventTarget | null): boolean {
     if (!target || !(target instanceof HTMLElement)) return false;
-    const tag = target.tagName.toLowerCase();
+    const tag = (target.tagName || '').toLowerCase();
     return tag === 'input' || tag === 'textarea' || tag === 'select';
   }
 
   private initInputListeners() {
     window.addEventListener('keydown', (e) => {
       if (this.isTypingInInput(e.target)) return;
+      if (typeof e.key !== 'string' || !e.key) return;
       const key = e.key.toLowerCase();
       this.keys[key] = true;
 
@@ -2942,6 +2943,7 @@ class GameApp {
     });
 
     window.addEventListener('keyup', (e) => {
+      if (typeof e.key !== 'string' || !e.key) return;
       this.keys[e.key.toLowerCase()] = false;
     });
 

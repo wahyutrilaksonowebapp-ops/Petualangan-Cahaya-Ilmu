@@ -50,7 +50,7 @@ function createEmptyStageStats(): StudentAnalyticsRow['stageStats'] {
 }
 
 function normalizeStudentKey(name: string, institution: string): string {
-  const clean = `${name.trim().toLowerCase()}__${institution.trim().toLowerCase()}`
+  const clean = `${(name || '').trim().toLowerCase()}__${(institution || '').trim().toLowerCase()}`
     .replace(/[^a-z0-9_]+/g, '-')
     .replace(/^-+|-+$/g, '');
   return `stu-${clean || Date.now()}`;
