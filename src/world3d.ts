@@ -469,8 +469,8 @@ export class World3D {
     const h = Math.max(1, window.innerHeight);
     this.camera.aspect = w / h;
     if (this.inFlightMode) {
-      // Shift optical center upward so 3D airplane & 4 answer boxes sit dead-center inside upper 80% sky zone
-      this.camera.setViewOffset(w, h, 0, Math.round(h * 0.1), w, h);
+      // Shift optical center upward so 3D airplane & 4 answer boxes sit dead-center inside upper sky zone
+      this.camera.setViewOffset(w, h, 0, Math.round(h * 0.13), w, h);
     } else {
       this.camera.clearViewOffset();
     }
@@ -2659,7 +2659,7 @@ export class World3D {
     // Frame optical center in the middle of the upper 80% sky viewport (above 20% bottom question panel)
     const w = Math.max(1, window.innerWidth);
     const h = Math.max(1, window.innerHeight);
-    this.camera.setViewOffset(w, h, 0, Math.round(h * 0.1), w, h);
+    this.camera.setViewOffset(w, h, 0, Math.round(h * 0.13), w, h);
     this.camera.position.set(0, 6.2, 8.8);
     this.camera.lookAt(0, 4.3, -14);
   }

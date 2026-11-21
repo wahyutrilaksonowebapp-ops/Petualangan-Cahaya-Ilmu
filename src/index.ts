@@ -1277,8 +1277,9 @@ class GameApp {
     this.world.onFlightLaneChange = (laneIndex: number) => {
       const indicator = document.getElementById('flight-lane-indicator');
       if (indicator) {
-        indicator.textContent = `Pesawat Membidik: Kotak ${letters[laneIndex] || 'B'}`;
+        indicator.textContent = `Pesawat Membidik: Platform ${letters[laneIndex] || 'B'}`;
       }
+      this.highlightActiveLaneOption(laneIndex);
     };
 
     this.world.onFlightTimerTick = (remainingSec: number, progress: number) => {
@@ -2226,15 +2227,82 @@ class GameApp {
     const qText = document.getElementById('quiz-question-text');
     if (qText) qText.textContent = q.question;
 
-    // Answer options (A, B, C, D) appear ONLY on the 3D floating sky boxes approached by the airplane
+    // Render readable A, B, C, D Answer Menu in the bottom panel synced with the 4 3D sky platforms
+    const optionsContainer = document.getElementById('quiz-options-container');
+    const letters = ['A', 'B', 'C', 'D'];
+    const badgePalette = [
+      'bg-emerald-500 text-slate-950',
+      'bg-sky-500 text-slate-950',
+      'bg-amber-400 text-slate-950',
+      'bg-pink-500 text-white',
+    ];
+
+    if (optionsContainer) {
+      optionsContainer.innerHTML = '';
+      q.options.forEach((optText, optIdx) => {
+        const btn = document.createElement('button');
+        btn.id = `quiz-opt-btn-${optIdx}`;
+        btn.type = 'button';
+        btn.className =
+          'group text-left px-2.5 py-1.5 rounded-xl bg-slate-900/95 hover:bg-slate-800 border border-slate-700/80 transition-all flex items-start gap-2 min-w-0 cursor-pointer';
+        btn.innerHTML = `
+          <span class="w-5 h-5 rounded-md ${badgePalette[optIdx] || badgePalette[0]} font-black text-[11px] flex items-center justify-center flex-shrink-0 mt-0.5 shadow-sm">
+            ${letters[optIdx] || '?'}
+          </span>
+          <span class="flex-1 text-[11px] sm:text-xs font-semibold text-slate-100 leading-snug">
+            ${escapeHtml(optText)}
+          </span>
+          <span class="opt-target-dot hidden flex-shrink-0 text-amber-300 text-[10px] mt-0.5" title="Jalur bidikan pesawat saat ini">
+            <i class="fa-solid fa-plane-up"></i>
+          </span>
+        `;
+        btn.addEventListener('click', () => {
+          if (this.flightQuestionResolved || this.flightDisabledLanes.includes(optIdx)) return;
+          sound.playButtonClick();
+          if (this.world.flightActiveLane === optIdx) {
+            // Second tap on already-targeted platform boosts the airplane right into it
+            this.world.boostAirplaneToAnswer();
+          } else {
+            this.world.selectAirplaneLane(optIdx);
+          }
+        });
+        optionsContainer.appendChild(btn);
+      });
+    }
+
+    // Sync 4 3D floating sky platforms with the same A, B, C, D options
     const duration = this.missionConfig.durationPerQuestionSec || 25;
     this.world.startFlightQuestion(duration, q.options, []);
-    const letters = ['A', 'B', 'C', 'D'];
     const indicator = document.getElementById('flight-lane-indicator');
     if (indicator) {
-      indicator.textContent = `Pesawat Membidik: Kotak ${letters[this.world.flightActiveLane] || 'B'}`;
+      indicator.textContent = `Pesawat Membidik: Platform ${letters[this.world.flightActiveLane] || 'B'}`;
     }
+    this.highlightActiveLaneOption(this.world.flightActiveLane);
     this.renderFlightHudState();
+  }
+
+  private highlightActiveLaneOption(activeLane: number) {
+    if (this.flightQuestionResolved) return;
+    for (let i = 0; i < 4; i++) {
+      const btn = document.getElementById(`quiz-opt-btn-${i}`) as HTMLButtonElement | null;
+      if (!btn) continue;
+      const dot = btn.querySelector('.opt-target-dot');
+      if (this.flightDisabledLanes.includes(i)) {
+        btn.className =
+          'group text-left px-2.5 py-1.5 rounded-xl bg-slate-950/60 border border-slate-800/70 opacity-30 cursor-not-allowed flex items-start gap-2 min-w-0';
+        dot?.classList.add('hidden');
+        continue;
+      }
+      if (i === activeLane) {
+        btn.className =
+          'group text-left px-2.5 py-1.5 rounded-xl bg-amber-500/15 border-2 border-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.28)] transition-all flex items-start gap-2 min-w-0 cursor-pointer';
+        dot?.classList.remove('hidden');
+      } else {
+        btn.className =
+          'group text-left px-2.5 py-1.5 rounded-xl bg-slate-900/95 hover:bg-slate-800 border border-slate-700/80 transition-all flex items-start gap-2 min-w-0 cursor-pointer';
+        dot?.classList.add('hidden');
+      }
+    }
   }
 
   private resolveFlightAnswer(chosenLane: number) {
@@ -2265,6 +2333,33 @@ class GameApp {
     const feedbackText = document.getElementById('quiz-feedback-text');
     const nextBtn = document.getElementById('btn-next-question');
     const letters = ['A', 'B', 'C', 'D'];
+
+    // Lock and colorize the A-D bottom option cards to reinforce the correct answer
+    for (let i = 0; i < 4; i++) {
+      const btn = document.getElementById(`quiz-opt-btn-${i}`) as HTMLButtonElement | null;
+      if (!btn) continue;
+      btn.disabled = true;
+      const dot = btn.querySelector('.opt-target-dot');
+      if (i === q.answer) {
+        btn.className =
+          'text-left px-2.5 py-1.5 rounded-xl bg-emerald-950/90 border-2 border-emerald-400 text-emerald-100 flex items-start gap-2 min-w-0';
+        if (dot) {
+          dot.className = 'opt-target-dot flex-shrink-0 text-emerald-300 text-xs mt-0.5';
+          dot.innerHTML = '<i class="fa-solid fa-circle-check"></i>';
+        }
+      } else if (i === chosenLane && !isCorrect) {
+        btn.className =
+          'text-left px-2.5 py-1.5 rounded-xl bg-red-950/90 border-2 border-red-500 text-red-100 flex items-start gap-2 min-w-0';
+        if (dot) {
+          dot.className = 'opt-target-dot flex-shrink-0 text-red-400 text-xs mt-0.5';
+          dot.innerHTML = '<i class="fa-solid fa-circle-xmark"></i>';
+        }
+      } else {
+        btn.className =
+          'text-left px-2.5 py-1.5 rounded-xl bg-slate-950/60 border border-slate-800 opacity-45 flex items-start gap-2 min-w-0';
+        dot?.classList.add('hidden');
+      }
+    }
 
     if (isCorrect) {
       sound.playDing();
@@ -2445,16 +2540,22 @@ class GameApp {
     const toDisable = wrongIndices.slice(0, 2);
     this.flightDisabledLanes = toDisable;
 
-    // Visually dim the 2 eliminated 3D Answer Boxes in the sky
+    // Visually dim the 2 eliminated 3D Answer Boxes in the sky & disable their bottom menu cards
     this.world.updateFlightBoxTextures(q.options, toDisable);
+    toDisable.forEach((idx) => {
+      const btn = document.getElementById(`quiz-opt-btn-${idx}`) as HTMLButtonElement | null;
+      if (btn) btn.disabled = true;
+    });
 
     // If airplane is currently on a disabled lane, gently nudge it to an active lane
     if (toDisable.includes(this.world.flightActiveLane)) {
       const safeLane = [0, 1, 2, 3].find((i) => !toDisable.includes(i)) ?? q.answer;
       this.world.selectAirplaneLane(safeLane);
+    } else {
+      this.highlightActiveLaneOption(this.world.flightActiveLane);
     }
 
-    this.showToast('50:50 aktif! 2 kotak jawaban 3D yang salah telah diredupkan di langit.', 'info');
+    this.showToast('50:50 aktif! 2 pilihan jawaban salah telah diredupkan di panel dan langit 3D.', 'info');
     this.renderFlightHudState();
   }
 

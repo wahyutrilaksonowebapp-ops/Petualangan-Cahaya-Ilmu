@@ -1067,29 +1067,48 @@ export function buildAkmMissionDeck(
   const sulitTarget = Math.max(1, Math.round(clampedCount * 0.3));
   const sedangTarget = Math.max(1, clampedCount - mudahTarget - sulitTarget);
 
-  // Merge grade-specific curriculum questions + curated element AKM bank
+  // Respect explicit difficulty tags on grade-specific curriculum questions
   const convertedBase: AkmQuizQuestion[] = baseQuestions.map((q, idx) => ({
     ...q,
-    difficulty: inferDifficulty(q, idx),
+    difficulty: q.difficulty ?? inferDifficulty(q, idx),
     elementId: stageId,
   }));
 
   const curatedPool = ELEMENT_AKM_BANK[stageId] || ELEMENT_AKM_BANK[1];
 
-  // Deduplicate by normalized question string (keeping grade-specific first)
+  // Keep grade-specific questions prioritized before general element pool items
   const seen = new Set<string>();
-  const combined: AkmQuizQuestion[] = [];
-  for (const q of [...convertedBase, ...curatedPool]) {
+  const baseUnique: AkmQuizQuestion[] = [];
+  const extraUnique: AkmQuizQuestion[] = [];
+
+  for (const q of convertedBase) {
     const key = q.question.trim().toLowerCase().slice(0, 65);
     if (!seen.has(key)) {
       seen.add(key);
-      combined.push(q);
+      baseUnique.push(q);
+    }
+  }
+  for (const q of curatedPool) {
+    const key = q.question.trim().toLowerCase().slice(0, 65);
+    if (!seen.has(key)) {
+      seen.add(key);
+      extraUnique.push(q);
     }
   }
 
-  const mudahPool = shuffleArray(combined.filter((q) => q.difficulty === 'mudah'));
-  const sedangPool = shuffleArray(combined.filter((q) => q.difficulty === 'sedang'));
-  const sulitPool = shuffleArray(combined.filter((q) => q.difficulty === 'sulit'));
+  // Shuffle within baseUnique and extraUnique separately so grade-specific AKM items always appear first
+  const mudahPool = [
+    ...shuffleArray(baseUnique.filter((q) => q.difficulty === 'mudah')),
+    ...shuffleArray(extraUnique.filter((q) => q.difficulty === 'mudah')),
+  ];
+  const sedangPool = [
+    ...shuffleArray(baseUnique.filter((q) => q.difficulty === 'sedang')),
+    ...shuffleArray(extraUnique.filter((q) => q.difficulty === 'sedang')),
+  ];
+  const sulitPool = [
+    ...shuffleArray(baseUnique.filter((q) => q.difficulty === 'sulit')),
+    ...shuffleArray(extraUnique.filter((q) => q.difficulty === 'sulit')),
+  ];
 
   const pick = (pool: AkmQuizQuestion[], count: number, fallbackPools: AkmQuizQuestion[][]): AkmQuizQuestion[] => {
     const picked: AkmQuizQuestion[] = [];
@@ -1108,6 +1127,20 @@ export function buildAkmMissionDeck(
   const sedangSelected = pick(sedangPool, sedangTarget, [sulitPool, mudahPool]);
   const sulitSelected = pick(sulitPool, sulitTarget, [sedangPool, mudahPool]);
 
-  // Progressive AKM flow: Mudah -> Sedang -> Sulit
-  return [...mudahSelected, ...sedangSelected, ...sulitSelected].slice(0, clampedCount);
+  const shuffleQuestionOptions = (q: AkmQuizQuestion): AkmQuizQuestion => {
+    if (!Array.isArray(q.options) || q.options.length < 2) return q;
+    const tagged = q.options.map((text, idx) => ({ text, isCorrect: idx === q.answer }));
+    const shuffled = shuffleArray(tagged);
+    const newAnswer = Math.max(0, shuffled.findIndex((item) => item.isCorrect));
+    return {
+      ...q,
+      options: shuffled.map((item) => item.text),
+      answer: newAnswer,
+    };
+  };
+
+  // Progressive AKM flow: Mudah -> Sedang -> Sulit, with randomized A/B/C/D option placement
+  return [...mudahSelected, ...sedangSelected, ...sulitSelected]
+    .slice(0, clampedCount)
+    .map(shuffleQuestionOptions);
 }

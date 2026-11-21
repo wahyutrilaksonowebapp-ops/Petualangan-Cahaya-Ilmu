@@ -5,6 +5,7 @@ export interface QuizQuestion {
   answer: number;
   explanation: string;
   hint: string;
+  difficulty?: 'mudah' | 'sedang' | 'sulit';
 }
 
 export interface StageCurriculum {
@@ -1202,62 +1203,174 @@ export const CURRICULUM_DATA: CurriculumMap = {
         ]
       }
     },
-    // KELAS 6 (FASE C) - BANK SOAL AKM RESMI SDN KEDUNGRINGIN I BEJI
+    // KELAS 6 (FASE C) - MATERI & BANK 10 SOAL AKM RESMI: Q.S. AD-DUHA, Q.S. AL-INSYIRAH & HUKUM BACAAN GUNNAH
     6: {
       1: {
-        title: "Hukum Gunah & Surah al-Insyirah",
+        title: "Q.S. ad-Duha, Q.S. al-Insyirah & Hukum Bacaan Gunnah",
         element: "Al-Qur'an dan Hadis",
         fase: "Fase C",
-        arabic: "فَإِنَّ مَعَ الْعُسْرِ يُسْرًا • إِنَّ مَعَ الْعُسْرِ يُسْرًا",
-        translation: "Maka sesungguhnya beserta kesulitan ada kemudahan, sesungguhnya beserta kesulitan ada kemudahan. (QS. Al-Insyirah: 5-6)",
-        description: "Mendalami hukum tajwid Gunah Musyaddadah (Nun bertasydid نّ dan Mim bertasydid مّ) serta tadabbur hikmah ketabahan, resiliensi, dan optimisme dalam Surah al-Insyirah.",
+        arabic: "فَأَمَّا الْيَتِيمَ فَلَا تَقْهَرْ • فَإِنَّ مَعَ الْعُسْرِ يُسْرًا",
+        translation: "Maka terhadap anak yatim janganlah engkau berlaku sewenang-wenang (QS. Ad-Duha: 9) • Maka sesungguhnya beserta kesulitan ada kemudahan (QS. Al-Insyirah: 5).",
+        description: "Mempelajari bacaan, arti, dan pesan pokok Q.S. ad-Duha (11 ayat), Q.S. al-Insyirah (8 ayat), serta penerapan hukum bacaan tajwid Gunnah Musyaddadah (Nun bertasydid نّ dan Mim bertasydid مّ) dalam kehidupan sehari-hari.",
         points: [
-          "Hukum Gunah Musyaddadah: Huruf Nun atau Mim yang memiliki tanda tasydid wajib dibaca mendengung masuk ke rongga hidung sepanjang 2 ketukan/harakat.",
-          "Tadabbur Surah al-Insyirah ayat 5-6: Kata 'al-'Usri' (kesulitan) berbentuk makrifah (tunggal/terbatas), sedangkan 'Yusran' (kemudahan) berbentuk nakirah (berulang/tak terbatas).",
-          "Karakter Profil Pelajar Pancasila: Menghadapi tugas belajar dan ujian sekolah dengan tekun, pantang menyerah, dan berprasangka baik (husnuzan) kepada pertolongan Allah."
+          "Q.S. ad-Duha (11 ayat, Makkiyah): Ad-Duha artinya waktu matahari sepenggalahan naik (pagi). Allah menegaskan tidak meninggalkan Nabi Muhammad saw., memerintahkan menyayangi anak yatim, tidak menghardik peminta-minta, dan mensyukuri nikmat Allah.",
+          "Q.S. al-Insyirah (8 ayat, Makkiyah): Al-Insyirah artinya melapangkan dada. Mengajarkan bahwa bersama setiap kesulitan selalu ada kemudahan (ayat 5-6), disiplin terus berkarya setelah selesai suatu urusan (ayat 7), dan hanya berharap kepada Allah (ayat 8).",
+          "Hukum Bacaan Gunnah (Gunnah Musyaddadah): Apabila terdapat huruf Nun bertasydid (نّ) atau Mim bertasydid (مّ), wajib dibaca mendengung jelas keluar dari pangkal hidung (al-khaisyum) selama 2 harakat (ketukan).",
+          "Contoh Gunnah di kedua surah: فَأَمَّا الْيَتِيمَ dan وَأَمَّا السَّائِلَ (Mim bertasydid di Q.S. ad-Duha), serta فَإِنَّ مَعَ الْعُسْرِ dan إِنَّ مَعَ الْعُسْرِ (Nun bertasydid di Q.S. al-Insyirah)."
         ],
-        ttsText: "Gunah musyaddadah dibaca mendengung dua harakat pada nun dan mim bertasydid. Surah al-Insyirah mengajarkan optimisme di balik kesulitan.",
-        bossName: "Penjaga Kelapangan Hati (3 Level Ujian)",
-        bossDesc: "Kalahkan Bos Gerbang 3 Tingkat: Level 1 (Memahami), Level 2 (Menerapkan), Level 3 (Merefleksi)!",
+        ttsText: "Materi PAI Kelas 6 Al-Qur'an dan Hadis membahas Surah ad-Duha, Surah al-Insyirah, dan hukum bacaan Gunnah. Surah ad-Duha terdiri atas sebelas ayat yang mengajarkan syukur dan kasih sayang kepada anak yatim. Surah al-Insyirah terdiri atas delapan ayat yang mengajarkan ketabahan karena bersama kesulitan ada kemudahan. Sedangkan hukum bacaan Gunnah berlaku pada huruf nun bertasydid dan mim bertasydid yang dibaca mendengung dua harakat melalui pangkal hidung.",
+        bossName: "Rintangan Pemahaman: Q.S. ad-Duha, al-Insyirah & Gunnah",
+        bossDesc: "Taklukkan 10 soal AKM Q.S. ad-Duha, Q.S. al-Insyirah, dan Hukum Bacaan Gunnah dengan Pesawat 3D!",
         quiz: [
+          // 1. MUDAH (10%)
           {
-            stimulus: "[Level 1: Memahami - Tajwid Gunah]\nPerhatikan kutipan ayat dari Surah al-Insyirah berikut:\nفَإِنَّ مَعَ الْعُسْرِ يُسْرًا\nPada lafaz فَإِنَّ terdapat huruf nun yang bertanda tasydid (نّ).",
-            question: "Hukum tajwid yang terdapat pada lafaz 'fa inna' dan cara membacanya yang tepat adalah...",
+            difficulty: "mudah",
+            stimulus: "[AKM Mudah • Mengenal Q.S. ad-Duha]\nSetiap pagi sebelum belajar di SDN Kedungringin I Beji, siswa kelas 6 bersama-sama membaca Q.S. ad-Duha yang terdiri atas 11 ayat dan termasuk golongan surah Makkiyah.",
+            question: "Arti dari nama Surah 'ad-Duha' (الضُّحَىٰ) yang menjadi sumpah Allah pada ayat pertama adalah...",
             options: [
-              "Gunah Musyaddadah, dibaca mendengung selama 2 harakat",
-              "Idzhar Halqi, dibaca jelas dan tidak mendengung",
-              "Ikhfa Haqiqi, dibaca samar-samar dengan dengung panjang",
-              "Qalqalah Kubra, dibaca memantul dengan kuat"
+              "Waktu matahari sepenggalahan naik (waktu pagi)",
+              "Waktu malam ketika gelap gulita",
+              "Waktu terbenamnya matahari di sore hari",
+              "Waktu fajar sebelum terbit matahari"
             ],
             answer: 0,
-            explanation: "Huruf Nun bertasydid (نّ) atau Mim bertasydid (مّ) adalah hukum Gunah Musyaddadah, wajib dibaca mendengung 2 harakat.",
-            hint: "Nun berharakat syaddah/tasydid dibaca mendengung (gunah)."
+            explanation: "Ad-Duha artinya waktu matahari sepenggalahan naik di pagi hari, saat cahaya mulai terang dan aktivitas penuh semangat dimulai.",
+            hint: "Waktu pelaksanaan salat sunah Duha di pagi hari."
           },
+          // 2. SEDANG (60% - 1/6)
           {
-            stimulus: "[Level 2: Menerapkan - Kontekstual AKM]\nRafi, siswa Kelas 6 SDN Kedungringin I Beji, merasa cemas dan kesulitan saat belajar pembagian pecahan matematika dan tajwid rumit. Namun, ia mengingat pesan Surah al-Insyirah ayat 5-6.",
-            question: "Tindakan pengamalan yang paling mencerminkan pesan ayat 'Fa inna ma'al-'usri yusra' dalam kehidupan Rafi adalah...",
+            difficulty: "sedang",
+            stimulus: "[AKM Sedang • Tajwid Hukum Bacaan Gunnah]\nPerhatikan dua potongan ayat berikut:\n(1) فَإِنَّ مَعَ الْعُسْرِ يُسْرًا (Q.S. al-Insyirah: 5)\n(2) فَأَمَّا الْيَتِيمَ فَلَا تَقْهَرْ (Q.S. ad-Duha: 9)\nPada lafaz فَإِنَّ terdapat Nun bertasydid (نّ) dan pada lafaz فَأَمَّا terdapat Mim bertasydid (مّ).",
+            question: "Hukum bacaan tajwid pada huruf Nun bertasydid (نّ) dan Mim bertasydid (مّ) beserta cara membacanya yang tepat adalah...",
             options: [
-              "Menyerah dan meminta orang lain mengerjakan tugasnya",
-              "Tetap tenang, berdoa, tekun berlatih, dan percaya kemudahan akan datang setelah berusaha",
-              "Mengabaikan pelajaran yang sulit dan hanya mengerjakan yang mudah",
-              "Menyalahkan materi pelajaran yang terlalu sulit"
+              "Gunah Musyaddadah, dibaca mendengung dari pangkal hidung selama 2 harakat",
+              "Izhar Halqi, dibaca jelas dan pendek tanpa suara dengung",
+              "Qalqalah Kubra, dibaca memantul kuat di akhir ayat",
+              "Mad Tabii, dibaca memanjang tanpa melalui rongga hidung"
             ],
-            answer: 1,
-            explanation: "Surah al-Insyirah mendidik muslim untuk tidak berputus asa; di balik kesulitan ikhtiar, Allah menjanjikan jalan keluar dan kemudahan.",
-            hint: "Sikap pantang putus asa dan yakin ada kemudahan setelah ikhtiar."
+            answer: 0,
+            explanation: "Huruf Nun bertasydid (نّ) dan Mim bertasydid (مّ) merupakan hukum bacaan Gunnah (Gunnah Musyaddadah) yang wajib dibaca mendengung melalui pangkal hidung (al-khaisyum) sepanjang 2 harakat.",
+            hint: "Gunnah selalu ditandai tasydid pada huruf Nun atau Mim dengan bunyi dengung 2 ketukan."
           },
+          // 3. SEDANG (60% - 2/6)
           {
-            stimulus: "[Level 3: Merefleksi - AKM Evaluasi Makna]\nAyat ke-7 Surah al-Insyirah berbunyi: فَإِذَا فَرَغْتَ فَانصَبْ (Maka apabila engkau telah selesai dari suatu urusan, tetaplah bekerja keras untuk urusan yang lain).",
-            question: "Refleksi karakter murid yang selaras dengan pesan ayat ke-7 tersebut setelah menyelesaikan ujian sekolah adalah...",
+            difficulty: "sedang",
+            stimulus: "[AKM Sedang • Asbabun Nuzul Q.S. ad-Duha]\nKetika wahyu sempat terhenti turun beberapa waktu (fatratul wahyi), kaum musyrikin Quraisy mengejek bahwa Tuhan telah meninggalkan dan membenci Nabi Muhammad saw. Allah Swt. pun menurunkan Q.S. ad-Duha ayat 3: مَا وَدَّعَكَ رَبُّكَ وَمَا قَلَىٰ.",
+            question: "Pesan penenang hati yang ditegaskan Allah Swt. dalam Q.S. ad-Duha ayat 3 tersebut adalah...",
             options: [
-              "Bermalas-malasan tanpa target kegiatan positif berikutnya",
-              "Memanfaatkan waktu luang untuk kegiatan produktif seperti membaca Al-Qur'an dan membantu orang tua",
-              "Merasa puas diri dan berhenti menuntut ilmu",
-              "Tidur seharian penuh karena merasa sudah bebas tugas"
+              "Tuhanmu tidak meninggalkan engkau (Muhammad) dan tidak pula membencimu",
+              "Wahyu Al-Qur'an telah selesai diturunkan seluruhnya di Makkah",
+              "Nabi Muhammad saw. diperintahkan membalas ejekan kaum Quraisy",
+              "Kehidupan dunia lebih utama dibandingkan kehidupan akhirat"
             ],
-            answer: 1,
-            explanation: "Ayat ini mengajarkan etos kerja muslim yang dinamis: tidak bermalas-malasan dan terus berkarya dalam kebajikan.",
-            hint: "Segera beralih ke aktivitas kebajikan dan produktif berikutnya."
+            answer: 0,
+            explanation: "Ayat ke-3 Q.S. ad-Duha menghibur Nabi Muhammad saw. dan umat beriman bahwa Allah Swt. tidak pernah meninggalkan maupun membenci hamba-Nya yang taat.",
+            hint: "Perhatikan kata 'ma wadda'aka' (tidak meninggalkanmu) dan 'ma qala' (tidak membencimu)."
+          },
+          // 4. SEDANG (60% - 3/6)
+          {
+            difficulty: "sedang",
+            stimulus: "[AKM Sedang • Pengamalan Q.S. ad-Duha Ayat 9-10]\nDi kelas 6 ada seorang siswa baru yang ayahnya telah wafat (anak yatim). Suatu hari, ia lupa membawa penggaris dan dengan sopan meminjam kepada teman sebangkunya.",
+            question: "Sikap yang paling sesuai dengan perintah Q.S. ad-Duha ayat 9 (فَأَمَّا الْيَتِيمَ فَلَا تَقْهَرْ) dan ayat 10 (وَأَمَّا السَّائِلَ فَلَا تَنْهَرْ) adalah...",
+            options: [
+              "Meminjamkan penggaris dengan ramah, menghiburnya, dan memperlakukannya penuh kasih sayang",
+              "Menolaknya dengan suara keras agar ia jera dan tidak lupa lagi",
+              "Meminjamkan penggaris tetapi sambil menyindir di depan kelas",
+              "Membiarkannya saja dan pura-pura tidak mendengar permintaannya"
+            ],
+            answer: 0,
+            explanation: "Q.S. ad-Duha ayat 9 melarang berlaku sewenang-wenang kepada anak yatim, dan ayat 10 melarang menghardik orang yang meminta bantuan.",
+            hint: "Pilih sikap santun, menyayangi anak yatim, dan tidak membentak orang yang meminta."
+          },
+          // 5. SEDANG (60% - 4/6)
+          {
+            difficulty: "sedang",
+            stimulus: "[AKM Sedang • Makna Q.S. ad-Duha Ayat 11]\nAyat penutup Q.S. ad-Duha berbunyi: وَأَمَّا بِنِعْمَةِ رَبِّكَ فَحَدِّثْ (Dan terhadap nikmat Tuhanmu, hendaklah engkau nyatakan dengan bersyukur).",
+            question: "Wujud nyata mengamalkan Q.S. ad-Duha ayat 11 bagi seorang siswa kelas 6 yang meraih prestasi dan kecukupan rezeki adalah...",
+            options: [
+              "Mengucap Alhamdulillah, tetap rendah hati, dan berbagi ilmu atau sedekah kepada sesama",
+              "Memamerkan nilai dan barang mahal agar dipuji teman-teman",
+              "Menyembunyikan kemampuan belajarnya agar tidak dimintai bantuan teman",
+              "Merasa semua keberhasilan murni karena kehebatan diri sendiri"
+            ],
+            answer: 0,
+            explanation: "Menyatakan nikmat Allah (tahadduts bin-ni'mah) diwujudkan dengan syukur lisan, rendah hati, serta memanfaatkan nikmat untuk membantu sesama.",
+            hint: "Syukur nikmat dilakukan dengan rendah hati dan berbagi manfaat, bukan riya."
+          },
+          // 6. SEDANG (60% - 5/6)
+          {
+            difficulty: "sedang",
+            stimulus: "[AKM Sedang • Memahami Q.S. al-Insyirah Ayat 1-4]\nDalam Q.S. al-Insyirah ayat 1-4, Allah Swt. mengingatkan nikmat-nikmat besar yang telah dianugerahkan kepada Nabi Muhammad saw., diawali dengan ayat أَلَمْ نَشْرَحْ لَكَ صَدْرَكَ.",
+            question: "Tiga nikmat utama yang Allah Swt. sebutkan pada ayat 1 hingga 4 Q.S. al-Insyirah secara berurutan adalah...",
+            options: [
+              "Melapangkan dada, meringankan beban berat, dan meninggikan sebutan nama beliau",
+              "Memberikan kekayaan istana, pasukan besar, dan umur panjang",
+              "Menurunkan hujan lebat, kebun yang subur, dan hewan ternak",
+              "Memberikan mukjizat membelah laut dan menyembuhkan orang sakit"
+            ],
+            answer: 0,
+            explanation: "Q.S. al-Insyirah ayat 1-4 menguraikan 3 karunia Allah: kelapangan dada (ayat 1), diringankannya beban (ayat 2-3), dan ditinggikannya sebutan nama Nabi (ayat 4).",
+            hint: "Nasyrah laka sadrak = melapangkan dadamu; warafa'na laka dzikrak = meninggikan sebutanmu."
+          },
+          // 7. SEDANG (60% - 6/6)
+          {
+            difficulty: "sedang",
+            stimulus: "[AKM Sedang • Kontekstual Q.S. al-Insyirah Ayat 5-6]\nRafi, siswa Kelas 6 SDN Kedungringin I Beji, sempat gagal menyelesaikan latihan soal ujian sekolah dan merasa cemas. Guru mengingatkannya pada Q.S. al-Insyirah ayat 5-6: فَإِنَّ مَعَ الْعُسْرِ يُسْرًا • إِنَّ مَعَ الْعُسْرِ يُسْرًا.",
+            question: "Makna optimisme dan tindakan terbaik bagi Rafi berdasarkan pengulangan ayat 5 dan 6 Q.S. al-Insyirah tersebut adalah...",
+            options: [
+              "Tetap tenang, berdoa, dan terus berlatih karena di balik satu kesulitan Allah siapkan banyak kemudahan",
+              "Berhenti belajar dan memilih menyalin jawaban teman saat ujian",
+              "Menyerah karena menganggap dirinya tidak berbakat dalam pelajaran tersebut",
+              "Menyalahkan soal latihan yang dianggap terlalu rumit"
+            ],
+            answer: 0,
+            explanation: "Pengulangan ayat 5-6 menegaskan bahwa satu kesulitan (al-'usri) selalu diiringi banyak kemudahan (yusran) bagi hamba yang sabar dan tekun berikhtiar.",
+            hint: "Pesan utamanya adalah pantang putus asa dan percaya pertolongan Allah setelah usaha."
+          },
+          // 8. SULIT (30% - 1/3)
+          {
+            difficulty: "sulit",
+            stimulus: "[AKM Sulit • Analisis Tajwid Gunnah Lintas Surah]\nPerhatikan empat potongan ayat dari Q.S. ad-Duha dan Q.S. al-Insyirah berikut:\n(1) وَالضُّحَىٰ  (2) فَأَمَّا الْيَتِيمَ  (3) فَإِنَّ مَعَ الْعُسْرِ  (4) فَلَا تَقْهَرْ",
+            question: "Pasangan nomor lafaz yang sama-sama mengandung hukum bacaan Gunnah Musyaddadah sehingga wajib dibaca dengung 2 harakat adalah...",
+            options: [
+              "Nomor (2) dan (3) karena mengandung huruf Mim bertasydid (مّ) dan Nun bertasydid (نّ)",
+              "Nomor (1) dan (2) karena keduanya memiliki tanda tasydid di awal kata",
+              "Nomor (3) dan (4) karena berada di akhir ayat surah Makkiyah",
+              "Nomor (1) dan (4) karena dibaca jelas tanpa dengung"
+            ],
+            answer: 0,
+            explanation: "Meski وَالضُّحَىٰ memiliki tasydid pada huruf Dhad (ضّ), itu adalah Alif Lam Syamsiyah bukan Gunnah. Gunnah Musyaddadah khusus terjadi pada Mim bertasydid (فَأَمَّا) dan Nun bertasydid (فَإِنَّ).",
+            hint: "Hati-hati pengecoh! Tidak semua tasydid adalah Gunnah; khusus huruf Nun (نّ) dan Mim (مّ) saja."
+          },
+          // 9. SULIT (30% - 2/3)
+          {
+            difficulty: "sulit",
+            stimulus: "[AKM Sulit • Evaluasi & Refleksi Q.S. al-Insyirah Ayat 7-8]\nPerhatikan dua ayat terakhir Q.S. al-Insyirah:\nفَإِذَا فَرَغْتَ فَانصَبْ (7) وَإِلَىٰ رَبِّكَ فَارْغَبْ (8)\nSetelah selesai mengerjakan seluruh ujian semester, Dika langsung bermain gim berjam-jam hingga lupa salat Asar, sementara Zahra beristirahat secukupnya lalu tadarus, membantu ibu, dan berdoa memohon hasil terbaik.",
+            question: "Evaluasi yang paling tepat terhadap perilaku Dika dan Zahra menurut pesan Q.S. al-Insyirah ayat 7 dan 8 adalah...",
+            options: [
+              "Zahra mengamalkan ayat 7-8 dengan mengisi waktu luang secara produktif dan menggantungkan harapan hanya kepada Allah, sedangkan Dika lalai memanfaatkan waktu",
+              "Dika sudah benar karena ayat 7 memerintahkan beristirahat total tanpa batas setelah ujian selesai",
+              "Keduanya belum tepat karena setelah selesai ujian siswa wajib terus belajar tanpa tidur",
+              "Zahra kurang tepat karena membantu orang tua tidak termasuk ibadah dalam ayat 7"
+            ],
+            answer: 0,
+            explanation: "Ayat 7 mengajarkan etos kerja berkelanjutan (tidak menyia-nyiakan waktu luang setelah satu urusan selesai), dan ayat 8 mengajarkan tawakal penuh hanya kepada Allah Swt.",
+            hint: "Bandingkan siapa yang memanfaatkan waktu luang untuk amal produktif dan berserah diri kepada Allah."
+          },
+          // 10. SULIT (30% - 3/3)
+          {
+            difficulty: "sulit",
+            stimulus: "[AKM Sulit • Sintesis Nilai Q.S. ad-Duha & Q.S. al-Insyirah]\nPanitia kelas 6 mengadakan bakti sosial untuk anak yatim dan warga kurang mampu. Di tengah persiapan, turun hujan deras sehingga beberapa anggota panitia panik dan ingin membatalkan acara. Ketua kelas menenangkan teman-temannya, mengajak berdoa, mencari aula terdekat, dan tetap menyalurkan bantuan dengan ramah.",
+            question: "Bagaimana tindakan ketua kelas tersebut memadukan nilai utama Q.S. ad-Duha dan Q.S. al-Insyirah secara utuh?",
+            options: [
+              "Memadukan kasih sayang pada anak yatim & syukur nikmat (Q.S. ad-Duha) dengan kelapangan dada, solusi di balik kesulitan, dan tawakal kepada Allah (Q.S. al-Insyirah)",
+              "Hanya mengamalkan Q.S. ad-Duha saja karena kegiatan tersebut dilakukan pada pagi hari",
+              "Hanya mengamalkan hukum Gunnah karena panitia membaca doa bersama dengan suara keras",
+              "Menunjukkan bahwa kegiatan sosial sebaiknya ditunda sampai tidak ada hambatan sama sekali"
+            ],
+            answer: 0,
+            explanation: "Q.S. ad-Duha menanamkan kepedulian sosial (yatim & duafa) dan syukur nikmat, sedangkan Q.S. al-Insyirah melatih kelapangan hati, ketangguhan mencari solusi saat sulit, serta tawakal kepada Allah Swt.",
+            hint: "Gabungkan pesan sosial/syukur dari Q.S. ad-Duha dengan pesan ketabahan/tawakal dari Q.S. al-Insyirah."
           }
         ]
       },
@@ -2475,45 +2588,164 @@ export const CURRICULUM_DATA: CurriculumMap = {
         ]
       }
     },
-    // KELAS 6 (FASE C)
+    // KELAS 6 (FASE C) - SINKRON DENGAN MATERI Q.S. AD-DUHA, Q.S. AL-INSYIRAH & HUKUM BACAAN GUNNAH (10 SOAL AKM)
     6: {
       1: {
-        title: "Hukum Tafkhim & Tarqiq (Ra & Lam)",
+        title: "Q.S. ad-Duha, Q.S. al-Insyirah & Hukum Bacaan Gunnah",
         element: "Al-Qur'an dan Hadis",
         fase: "Fase C",
-        arabic: "رَّضِيَ اللَّهُ عَنْهُمْ وَرَضُوا عَنْهُ",
-        translation: "Allah rida terhadap mereka dan mereka pun rida kepada-Nya. (QS. Al-Bayyinah: 8)",
-        description: "Mempelajari hukum tebal (Tafkhim) dan tipis (Tarqiq) pada huruf Ra (ر) dan huruf Lam Jalalah pada lafaz Allah (الله), serta hadis berbuat baik sesama kawan.",
+        arabic: "فَأَمَّا الْيَتِيمَ فَلَا تَقْهَرْ • فَإِنَّ مَعَ الْعُسْرِ يُسْرًا",
+        translation: "Maka terhadap anak yatim janganlah engkau berlaku sewenang-wenang (QS. Ad-Duha: 9) • Maka sesungguhnya beserta kesulitan ada kemudahan (QS. Al-Insyirah: 5).",
+        description: "Mempelajari bacaan, arti, dan pesan pokok Q.S. ad-Duha (11 ayat), Q.S. al-Insyirah (8 ayat), serta penerapan hukum bacaan tajwid Gunnah Musyaddadah (Nun bertasydid نّ dan Mim bertasydid مّ) dalam kehidupan sehari-hari.",
         points: [
-          "Tafkhim artinya tebal (mulut mengerucut), Tarqiq artinya tipis (bibir tersenyum).",
-          "Lam Jalalah dibaca tebal (Tafkhim) jika didahului harakat fathah atau dammah (contoh: Huwallahu).",
-          "Lam Jalalah dibaca tipis (Tarqiq) jika didahului harakat kasrah (contoh: Bismillahi).",
-          "Huruf Ra dibaca tebal jika berharakat fathah/dammah, dan dibaca tipis jika berharakat kasrah."
+          "Q.S. ad-Duha (11 ayat, Makkiyah): Ad-Duha artinya waktu matahari sepenggalahan naik (pagi). Allah menegaskan tidak meninggalkan Nabi Muhammad saw., memerintahkan menyayangi anak yatim, tidak menghardik peminta-minta, dan mensyukuri nikmat Allah.",
+          "Q.S. al-Insyirah (8 ayat, Makkiyah): Al-Insyirah artinya melapangkan dada. Mengajarkan bahwa bersama setiap kesulitan selalu ada kemudahan (ayat 5-6), disiplin terus berkarya setelah selesai suatu urusan (ayat 7), dan hanya berharap kepada Allah (ayat 8).",
+          "Hukum Bacaan Gunnah (Gunnah Musyaddadah): Apabila terdapat huruf Nun bertasydid (نّ) atau Mim bertasydid (مّ), wajib dibaca mendengung jelas keluar dari pangkal hidung (al-khaisyum) selama 2 harakat (ketukan).",
+          "Contoh Gunnah di kedua surah: فَأَمَّا الْيَتِيمَ dan وَأَمَّا السَّائِلَ (Mim bertasydid di Q.S. ad-Duha), serta فَإِنَّ مَعَ الْعُسْرِ dan إِنَّ مَعَ الْعُسْرِ (Nun bertasydid di Q.S. al-Insyirah)."
         ],
-        ttsText: "Tafkhim dibaca tebal dan Tarqiq dibaca tipis pada huruf Ra dan Lam Jalalah. Berlatihlah melafalkan dengan fasih.",
-        bossName: "Penjaga Lafaz Jalalah",
-        bossDesc: "Buktikan kemahiran membaca tebal dan tipis pada huruf Ra dan Lam!",
+        ttsText: "Materi PAI Kelas 6 Al-Qur'an dan Hadis membahas Surah ad-Duha, Surah al-Insyirah, dan hukum bacaan Gunnah. Surah ad-Duha terdiri atas sebelas ayat yang mengajarkan syukur dan kasih sayang kepada anak yatim. Surah al-Insyirah terdiri atas delapan ayat yang mengajarkan ketabahan karena bersama kesulitan ada kemudahan. Sedangkan hukum bacaan Gunnah berlaku pada huruf nun bertasydid dan mim bertasydid yang dibaca mendengung dua harakat melalui pangkal hidung.",
+        bossName: "Rintangan Pemahaman: Q.S. ad-Duha, al-Insyirah & Gunnah",
+        bossDesc: "Taklukkan 10 soal AKM Q.S. ad-Duha, Q.S. al-Insyirah, dan Hukum Bacaan Gunnah dengan Pesawat 3D!",
         quiz: [
           {
-            question: "Lafaz 'Bismillahi' (بِسْمِ اللَّهِ) huruf Lam Jalalah-nya dibaca...",
-            options: ["Tafkhim (Tebal)", "Tarqiq (Tipis)", "Samar-samar", "Memantul"],
-            answer: 1,
-            explanation: "Lam Jalalah didahului harakat kasrah pada huruf Mim (Bismi) sehingga wajib dibaca tipis (Tarqiq).",
-            hint: "Didahului oleh harakat kasrah."
+            difficulty: "mudah",
+            stimulus: "[AKM Mudah • Mengenal Q.S. ad-Duha]\nSetiap pagi sebelum belajar di SDN Kedungringin I Beji, siswa kelas 6 bersama-sama membaca Q.S. ad-Duha yang terdiri atas 11 ayat dan termasuk golongan surah Makkiyah.",
+            question: "Arti dari nama Surah 'ad-Duha' (الضُّحَىٰ) yang menjadi sumpah Allah pada ayat pertama adalah...",
+            options: [
+              "Waktu matahari sepenggalahan naik (waktu pagi)",
+              "Waktu malam ketika gelap gulita",
+              "Waktu terbenamnya matahari di sore hari",
+              "Waktu fajar sebelum terbit matahari"
+            ],
+            answer: 0,
+            explanation: "Ad-Duha artinya waktu matahari sepenggalahan naik di pagi hari, saat cahaya mulai terang dan aktivitas penuh semangat dimulai.",
+            hint: "Waktu pelaksanaan salat sunah Duha di pagi hari."
           },
           {
-            question: "Huruf Ra (ر) yang berharakat Kasrah (seperti kata: Rizqan) harus dibaca secara...",
-            options: ["Tafkhim (Tebal)", "Tarqiq (Tipis)", "Dengung", "Gemetar keras"],
-            answer: 1,
-            explanation: "Ra berharakat kasrah dibaca tipis (Tarqiq) dengan posisi bibir tidak dimonyongkan.",
-            hint: "Tipis dan datar."
+            difficulty: "sedang",
+            stimulus: "[AKM Sedang • Tajwid Hukum Bacaan Gunnah]\nPerhatikan dua potongan ayat berikut:\n(1) فَإِنَّ مَعَ الْعُسْرِ يُسْرًا (Q.S. al-Insyirah: 5)\n(2) فَأَمَّا الْيَتِيمَ فَلَا تَقْهَرْ (Q.S. ad-Duha: 9)\nPada lafaz فَإِنَّ terdapat Nun bertasydid (نّ) dan pada lafaz فَأَمَّا terdapat Mim bertasydid (مّ).",
+            question: "Hukum bacaan tajwid pada huruf Nun bertasydid (نّ) dan Mim bertasydid (مّ) beserta cara membacanya yang tepat adalah...",
+            options: [
+              "Gunah Musyaddadah, dibaca mendengung dari pangkal hidung selama 2 harakat",
+              "Izhar Halqi, dibaca jelas dan pendek tanpa suara dengung",
+              "Qalqalah Kubra, dibaca memantul kuat di akhir ayat",
+              "Mad Tabii, dibaca memanjang tanpa melalui rongga hidung"
+            ],
+            answer: 0,
+            explanation: "Huruf Nun bertasydid (نّ) dan Mim bertasydid (مّ) merupakan hukum bacaan Gunnah (Gunnah Musyaddadah) yang wajib dibaca mendengung melalui pangkal hidung (al-khaisyum) sepanjang 2 harakat.",
+            hint: "Gunnah selalu ditandai tasydid pada huruf Nun atau Mim dengan bunyi dengung 2 ketukan."
           },
           {
-            question: "Arti dari istilah 'Tafkhim' dalam ilmu tajwid adalah...",
-            options: ["Membaca dengan tipis", "Membaca dengan tebal / menggembungkan suara", "Mendengungkan dua ketukan", "Menghentikan bacaan"],
-            answer: 1,
-            explanation: "Tafkhim secara bahasa berarti menggemukkan atau menebalkan pengucapan huruf.",
-            hint: "Tebal dan bergema di langit-langit mulut."
+            difficulty: "sedang",
+            stimulus: "[AKM Sedang • Asbabun Nuzul Q.S. ad-Duha]\nKetika wahyu sempat terhenti turun beberapa waktu (fatratul wahyi), kaum musyrikin Quraisy mengejek bahwa Tuhan telah meninggalkan dan membenci Nabi Muhammad saw. Allah Swt. pun menurunkan Q.S. ad-Duha ayat 3: مَا وَدَّعَكَ رَبُّكَ وَمَا قَلَىٰ.",
+            question: "Pesan penenang hati yang ditegaskan Allah Swt. dalam Q.S. ad-Duha ayat 3 tersebut adalah...",
+            options: [
+              "Tuhanmu tidak meninggalkan engkau (Muhammad) dan tidak pula membencimu",
+              "Wahyu Al-Qur'an telah selesai diturunkan seluruhnya di Makkah",
+              "Nabi Muhammad saw. diperintahkan membalas ejekan kaum Quraisy",
+              "Kehidupan dunia lebih utama dibandingkan kehidupan akhirat"
+            ],
+            answer: 0,
+            explanation: "Ayat ke-3 Q.S. ad-Duha menghibur Nabi Muhammad saw. dan umat beriman bahwa Allah Swt. tidak pernah meninggalkan maupun membenci hamba-Nya yang taat.",
+            hint: "Perhatikan kata 'ma wadda'aka' (tidak meninggalkanmu) dan 'ma qala' (tidak membencimu)."
+          },
+          {
+            difficulty: "sedang",
+            stimulus: "[AKM Sedang • Pengamalan Q.S. ad-Duha Ayat 9-10]\nDi kelas 6 ada seorang siswa baru yang ayahnya telah wafat (anak yatim). Suatu hari, ia lupa membawa penggaris dan dengan sopan meminjam kepada teman sebangkunya.",
+            question: "Sikap yang paling sesuai dengan perintah Q.S. ad-Duha ayat 9 (فَأَمَّا الْيَتِيمَ فَلَا تَقْهَرْ) dan ayat 10 (وَأَمَّا السَّائِلَ فَلَا تَنْهَرْ) adalah...",
+            options: [
+              "Meminjamkan penggaris dengan ramah, menghiburnya, dan memperlakukannya penuh kasih sayang",
+              "Menolaknya dengan suara keras agar ia jera dan tidak lupa lagi",
+              "Meminjamkan penggaris tetapi sambil menyindir di depan kelas",
+              "Membiarkannya saja dan pura-pura tidak mendengar permintaannya"
+            ],
+            answer: 0,
+            explanation: "Q.S. ad-Duha ayat 9 melarang berlaku sewenang-wenang kepada anak yatim, dan ayat 10 melarang menghardik orang yang meminta bantuan.",
+            hint: "Pilih sikap santun, menyayangi anak yatim, dan tidak membentak orang yang meminta."
+          },
+          {
+            difficulty: "sedang",
+            stimulus: "[AKM Sedang • Makna Q.S. ad-Duha Ayat 11]\nAyat penutup Q.S. ad-Duha berbunyi: وَأَمَّا بِنِعْمَةِ رَبِّكَ فَحَدِّثْ (Dan terhadap nikmat Tuhanmu, hendaklah engkau nyatakan dengan bersyukur).",
+            question: "Wujud nyata mengamalkan Q.S. ad-Duha ayat 11 bagi seorang siswa kelas 6 yang meraih prestasi dan kecukupan rezeki adalah...",
+            options: [
+              "Mengucap Alhamdulillah, tetap rendah hati, dan berbagi ilmu atau sedekah kepada sesama",
+              "Memamerkan nilai dan barang mahal agar dipuji teman-teman",
+              "Menyembunyikan kemampuan belajarnya agar tidak dimintai bantuan teman",
+              "Merasa semua keberhasilan murni karena kehebatan diri sendiri"
+            ],
+            answer: 0,
+            explanation: "Menyatakan nikmat Allah (tahadduts bin-ni'mah) diwujudkan dengan syukur lisan, rendah hati, serta memanfaatkan nikmat untuk membantu sesama.",
+            hint: "Syukur nikmat dilakukan dengan rendah hati dan berbagi manfaat, bukan riya."
+          },
+          {
+            difficulty: "sedang",
+            stimulus: "[AKM Sedang • Memahami Q.S. al-Insyirah Ayat 1-4]\nDalam Q.S. al-Insyirah ayat 1-4, Allah Swt. mengingatkan nikmat-nikmat besar yang telah dianugerahkan kepada Nabi Muhammad saw., diawali dengan ayat أَلَمْ نَشْرَحْ لَكَ صَدْرَكَ.",
+            question: "Tiga nikmat utama yang Allah Swt. sebutkan pada ayat 1 hingga 4 Q.S. al-Insyirah secara berurutan adalah...",
+            options: [
+              "Melapangkan dada, meringankan beban berat, dan meninggikan sebutan nama beliau",
+              "Memberikan kekayaan istana, pasukan besar, dan umur panjang",
+              "Menurunkan hujan lebat, kebun yang subur, dan hewan ternak",
+              "Memberikan mukjizat membelah laut dan menyembuhkan orang sakit"
+            ],
+            answer: 0,
+            explanation: "Q.S. al-Insyirah ayat 1-4 menguraikan 3 karunia Allah: kelapangan dada (ayat 1), diringankannya beban (ayat 2-3), dan ditinggikannya sebutan nama Nabi (ayat 4).",
+            hint: "Nasyrah laka sadrak = melapangkan dadamu; warafa'na laka dzikrak = meninggikan sebutanmu."
+          },
+          {
+            difficulty: "sedang",
+            stimulus: "[AKM Sedang • Kontekstual Q.S. al-Insyirah Ayat 5-6]\nRafi, siswa Kelas 6 SDN Kedungringin I Beji, sempat gagal menyelesaikan latihan soal ujian sekolah dan merasa cemas. Guru mengingatkannya pada Q.S. al-Insyirah ayat 5-6: فَإِنَّ مَعَ الْعُسْرِ يُسْرًا • إِنَّ مَعَ الْعُسْرِ يُسْرًا.",
+            question: "Makna optimisme dan tindakan terbaik bagi Rafi berdasarkan pengulangan ayat 5 dan 6 Q.S. al-Insyirah tersebut adalah...",
+            options: [
+              "Tetap tenang, berdoa, dan terus berlatih karena di balik satu kesulitan Allah siapkan banyak kemudahan",
+              "Berhenti belajar dan memilih menyalin jawaban teman saat ujian",
+              "Menyerah karena menganggap dirinya tidak berbakat dalam pelajaran tersebut",
+              "Menyalahkan soal latihan yang dianggap terlalu rumit"
+            ],
+            answer: 0,
+            explanation: "Pengulangan ayat 5-6 menegaskan bahwa satu kesulitan (al-'usri) selalu diiringi banyak kemudahan (yusran) bagi hamba yang sabar dan tekun berikhtiar.",
+            hint: "Pesan utamanya adalah pantang putus asa dan percaya pertolongan Allah setelah usaha."
+          },
+          {
+            difficulty: "sulit",
+            stimulus: "[AKM Sulit • Analisis Tajwid Gunnah Lintas Surah]\nPerhatikan empat potongan ayat dari Q.S. ad-Duha dan Q.S. al-Insyirah berikut:\n(1) وَالضُّحَىٰ  (2) فَأَمَّا الْيَتِيمَ  (3) فَإِنَّ مَعَ الْعُسْرِ  (4) فَلَا تَقْهَرْ",
+            question: "Pasangan nomor lafaz yang sama-sama mengandung hukum bacaan Gunnah Musyaddadah sehingga wajib dibaca dengung 2 harakat adalah...",
+            options: [
+              "Nomor (2) dan (3) karena mengandung huruf Mim bertasydid (مّ) dan Nun bertasydid (نّ)",
+              "Nomor (1) dan (2) karena keduanya memiliki tanda tasydid di awal kata",
+              "Nomor (3) dan (4) karena berada di akhir ayat surah Makkiyah",
+              "Nomor (1) dan (4) karena dibaca jelas tanpa dengung"
+            ],
+            answer: 0,
+            explanation: "Meski وَالضُّحَىٰ memiliki tasydid pada huruf Dhad (ضّ), itu adalah Alif Lam Syamsiyah bukan Gunnah. Gunnah Musyaddadah khusus terjadi pada Mim bertasydid (فَأَمَّا) dan Nun bertasydid (فَإِنَّ).",
+            hint: "Hati-hati pengecoh! Tidak semua tasydid adalah Gunnah; khusus huruf Nun (نّ) dan Mim (مّ) saja."
+          },
+          {
+            difficulty: "sulit",
+            stimulus: "[AKM Sulit • Evaluasi & Refleksi Q.S. al-Insyirah Ayat 7-8]\nPerhatikan dua ayat terakhir Q.S. al-Insyirah:\nفَإِذَا فَرَغْتَ فَانصَبْ (7) وَإِلَىٰ رَبِّكَ فَارْغَبْ (8)\nSetelah selesai mengerjakan seluruh ujian semester, Dika langsung bermain gim berjam-jam hingga lupa salat Asar, sementara Zahra beristirahat secukupnya lalu tadarus, membantu ibu, dan berdoa memohon hasil terbaik.",
+            question: "Evaluasi yang paling tepat terhadap perilaku Dika dan Zahra menurut pesan Q.S. al-Insyirah ayat 7 dan 8 adalah...",
+            options: [
+              "Zahra mengamalkan ayat 7-8 dengan mengisi waktu luang secara produktif dan menggantungkan harapan hanya kepada Allah, sedangkan Dika lalai memanfaatkan waktu",
+              "Dika sudah benar karena ayat 7 memerintahkan beristirahat total tanpa batas setelah ujian selesai",
+              "Keduanya belum tepat karena setelah selesai ujian siswa wajib terus belajar tanpa tidur",
+              "Zahra kurang tepat karena membantu orang tua tidak termasuk ibadah dalam ayat 7"
+            ],
+            answer: 0,
+            explanation: "Ayat 7 mengajarkan etos kerja berkelanjutan (tidak menyia-nyiakan waktu luang setelah satu urusan selesai), dan ayat 8 mengajarkan tawakal penuh hanya kepada Allah Swt.",
+            hint: "Bandingkan siapa yang memanfaatkan waktu luang untuk amal produktif dan berserah diri kepada Allah."
+          },
+          {
+            difficulty: "sulit",
+            stimulus: "[AKM Sulit • Sintesis Nilai Q.S. ad-Duha & Q.S. al-Insyirah]\nPanitia kelas 6 mengadakan bakti sosial untuk anak yatim dan warga kurang mampu. Di tengah persiapan, turun hujan deras sehingga beberapa anggota panitia panik dan ingin membatalkan acara. Ketua kelas menenangkan teman-temannya, mengajak berdoa, mencari aula terdekat, dan tetap menyalurkan bantuan dengan ramah.",
+            question: "Bagaimana tindakan ketua kelas tersebut memadukan nilai utama Q.S. ad-Duha dan Q.S. al-Insyirah secara utuh?",
+            options: [
+              "Memadukan kasih sayang pada anak yatim & syukur nikmat (Q.S. ad-Duha) dengan kelapangan dada, solusi di balik kesulitan, dan tawakal kepada Allah (Q.S. al-Insyirah)",
+              "Hanya mengamalkan Q.S. ad-Duha saja karena kegiatan tersebut dilakukan pada pagi hari",
+              "Hanya mengamalkan hukum Gunnah karena panitia membaca doa bersama dengan suara keras",
+              "Menunjukkan bahwa kegiatan sosial sebaiknya ditunda sampai tidak ada hambatan sama sekali"
+            ],
+            answer: 0,
+            explanation: "Q.S. ad-Duha menanamkan kepedulian sosial (yatim & duafa) dan syukur nikmat, sedangkan Q.S. al-Insyirah melatih kelapangan hati, ketangguhan mencari solusi saat sulit, serta tawakal kepada Allah Swt.",
+            hint: "Gabungkan pesan sosial/syukur dari Q.S. ad-Duha dengan pesan ketabahan/tawakal dari Q.S. al-Insyirah."
           }
         ]
       },

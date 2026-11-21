@@ -691,11 +691,11 @@
     </div>
   </div>
 
-  <!-- ==================== RINTANGAN PEMAHAMAN: 80% CENTER 3D AIRPLANE + 20% BOTTOM QUESTION PANEL ==================== -->
+  <!-- ==================== RINTANGAN PEMAHAMAN: CENTER 3D AIRPLANE + BOTTOM QUESTION & ANSWER MENU PANEL ==================== -->
   <div id="modal-battle" class="hidden fixed inset-0 z-40 pointer-events-none flex flex-col justify-between">
 
-    <!-- UPPER 80%: UNOBSTRUCTED 3D FLYING AIRPLANE & 4 3D ANSWER BOXES -->
-    <div class="relative flex-1 h-[80vh] pointer-events-none flex flex-col justify-between">
+    <!-- UPPER SKY VIEWPORT: UNOBSTRUCTED 3D FLYING AIRPLANE & 4 3D ANSWER PLATFORMS -->
+    <div class="relative flex-1 min-h-0 pointer-events-none flex flex-col justify-between">
 
       <!-- Compact Top Flight Telemetry Strip -->
       <header class="pointer-events-auto w-full px-2.5 pt-2 flex justify-center">
@@ -708,7 +708,7 @@
             <div class="flex items-center gap-1.5 flex-wrap">
               <span id="battle-stage-badge" class="text-[11px] font-extrabold text-sky-300">Dunia 1 • Al-Qur'an &amp; Hadis</span>
               <span id="battle-difficulty-badge" class="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-400/40">AKM Sedang</span>
-              <span id="battle-boss-name" class="hidden lg:inline text-[11px] text-slate-300 font-semibold">• Arahkan pesawat ke kotak jawaban 3D</span>
+              <span id="battle-boss-name" class="hidden lg:inline text-[11px] text-slate-300 font-semibold">• Arahkan pesawat ke platform jawaban 3D</span>
             </div>
           </div>
 
@@ -746,15 +746,15 @@
         </div>
       </header>
 
-      <!-- Center Open Sky Viewport: Subtle Edge Steer Controls & Active 3D Box Indicator -->
-      <div class="flex-1 pointer-events-none flex items-end justify-between px-3 pb-2.5">
+      <!-- Center Open Sky Viewport: Subtle Edge Steer Controls & Active 3D Platform Indicator -->
+      <div class="flex-1 pointer-events-none flex items-end justify-between px-3 pb-2">
         <button id="btn-steer-left" class="pointer-events-auto w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-slate-950/75 hover:bg-slate-900 border border-sky-400/60 text-sky-300 text-base flex items-center justify-center active:scale-90 transition-transform shadow-lg" title="Belok Kiri (Panah Kiri / A)">
           <i class="fa-solid fa-chevron-left"></i>
         </button>
 
         <div class="pointer-events-auto flex items-center gap-2">
           <div id="flight-lane-indicator" class="px-3.5 py-1 rounded-full bg-slate-950/85 border border-amber-400/70 text-amber-300 text-[11px] sm:text-xs font-extrabold shadow-lg">
-            Pesawat Membidik: Kotak B
+            Pesawat Membidik: Platform B
           </div>
           <button id="btn-flight-boost" class="px-3 py-1 rounded-full bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-extrabold text-[11px] uppercase tracking-wide hover:scale-105 active:scale-95 transition-transform shadow-md">
             <i class="fa-solid fa-jet-fighter-up mr-1"></i> Tembus Jawaban
@@ -767,39 +767,42 @@
       </div>
     </div>
 
-    <!-- BOTTOM 20%: SEPARATED COMPACT QUESTION-ONLY PANEL (PILIHAN JAWABAN HANYA DI KOTAK 3D PESAWAT) -->
-    <section id="flight-question-panel" class="pointer-events-auto w-full h-[20vh] min-h-[124px] max-h-[22vh] bg-slate-950/96 border-t-2 border-amber-400/80 shadow-[0_-8px_30px_rgba(0,0,0,0.65)] px-3 sm:px-5 py-2 flex flex-col justify-between overflow-hidden">
-      <div class="w-full max-w-5xl mx-auto flex flex-col gap-1 h-full justify-between">
+    <!-- BOTTOM QUESTION & READABLE ANSWER MENU PANEL (SYNCED WITH 3D AIRPLANE PLATFORMS A-D) -->
+    <section id="flight-question-panel" class="pointer-events-auto w-full h-[30vh] sm:h-[28vh] min-h-[196px] max-h-[37vh] bg-slate-950/96 border-t-2 border-amber-400/80 shadow-[0_-8px_30px_rgba(0,0,0,0.65)] px-3 sm:px-5 py-2 flex flex-col justify-between overflow-hidden">
+      <div class="w-full max-w-6xl mx-auto flex flex-col gap-1.5 h-full justify-between min-h-0">
 
         <!-- Compact Header Row -->
         <div class="flex items-center justify-between gap-2 text-[10px] sm:text-[11px] flex-shrink-0">
           <span id="quiz-question-number" class="font-extrabold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
             <i class="fa-solid fa-plane"></i> Soal 1 dari 10 • AKM
           </span>
-          <span class="hidden sm:inline text-slate-400 text-[10px]">
-            Arahkan pesawat (Panah / Mouse / Sentuh / Klik Kotak 3D) ke pilihan jawaban di langit
+          <span class="hidden md:inline text-slate-400 text-[10px]">
+            Baca pilihan A–D di bawah lalu arahkan pesawat (Panah / Mouse / Sentuh / Klik A–D) ke platform 3D yang tepat
           </span>
           <span id="flight-score-live" class="text-emerald-300 font-bold">Benar: 0 / 0</span>
         </div>
 
-        <!-- Compact Scrollable Stimulus + Small Question Prompt (No Option Cards Here) -->
-        <div class="flex-1 overflow-y-auto pr-1 space-y-1">
-          <div id="quiz-stimulus-card" class="hidden px-2.5 py-1 rounded-lg bg-amber-950/35 border border-amber-500/25 text-[11px] text-slate-300 leading-snug">
+        <!-- Scrollable Question + Full Readable Answer Menu A–D -->
+        <div class="flex-1 min-h-0 overflow-y-auto pr-1 flex flex-col gap-1.5">
+          <div id="quiz-stimulus-card" class="hidden px-2.5 py-1 rounded-lg bg-amber-950/35 border border-amber-500/25 text-[11px] text-slate-300 leading-snug flex-shrink-0">
             <span class="font-bold text-amber-300 uppercase text-[9px] tracking-wider mr-1.5">Stimulus:</span>
             <span id="quiz-stimulus-text"></span>
           </div>
 
-          <p id="quiz-question-text" class="text-xs sm:text-sm font-bold text-white leading-snug">
+          <p id="quiz-question-text" class="text-xs sm:text-sm font-bold text-white leading-snug flex-shrink-0">
             Pertanyaan AKM akan dimuat di sini...
           </p>
 
-          <div id="quiz-hint-box" class="hidden px-2.5 py-1 rounded-lg bg-sky-950/60 border border-sky-400/40 text-[11px] text-sky-200 flex items-center gap-1.5">
+          <div id="quiz-hint-box" class="hidden px-2.5 py-1 rounded-lg bg-sky-950/60 border border-sky-400/40 text-[11px] text-sky-200 flex items-center gap-1.5 flex-shrink-0">
             <i class="fa-solid fa-lightbulb text-amber-400 flex-shrink-0"></i>
             <span id="quiz-hint-text">Bisikan petunjuk dari Nura...</span>
           </div>
+
+          <!-- Readable Answer Menu (A, B, C, D) — Click to Steer Airplane or Click Again to Boost -->
+          <div id="quiz-options-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-1.5 flex-shrink-0 pt-0.5"></div>
         </div>
 
-        <!-- Feedback / Next Question Bar (Appears right inside bottom panel after airplane hits answer box) -->
+        <!-- Feedback / Next Question Bar (Appears right inside bottom panel after airplane hits answer platform) -->
         <div id="quiz-feedback-banner" class="hidden px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold flex items-center justify-between gap-2 flex-shrink-0">
           <div class="flex items-center gap-2 min-w-0">
             <div id="quiz-feedback-icon" class="w-5 h-5 rounded-md bg-emerald-500/20 text-emerald-300 flex items-center justify-center flex-shrink-0 text-[10px]">
